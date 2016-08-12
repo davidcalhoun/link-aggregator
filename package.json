@@ -1,0 +1,26 @@
+{
+  "name": "link-aggregator",
+  "version": "1.0.0",
+  "description": "",
+  "main": "link-aggregator.js",
+  "scripts": {
+    "server": "node proxy",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/davidcalhoun/link-aggregator.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/davidcalhoun/link-aggregator/issues"
+  },
+  "homepage": "https://github.com/davidcalhoun/link-aggregator#readme",
+  "devDependencies": {},
+  "dependencies": {
+    "codebird": "^2.6.0",
+    "ramda": "^0.22.1",
+    "whatwg-fetch": "^1.0.0"
+  }
+}
