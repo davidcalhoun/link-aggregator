@@ -11,7 +11,7 @@
         // Browser globals (root is window)
         root.linkAggregator = factory(root.codebird, root.R);
     }
-}(this, function(codebird, R) {
+}(this, function(Codebird, R) {
 
 'use strict';
 
