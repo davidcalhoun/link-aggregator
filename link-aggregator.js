@@ -242,6 +242,7 @@
               // new url, so init
               self.twitterLinks[urlCopy] = {
                 source: 'twitter',
+                sourceDetails: `${args.owner}/${args.name}`,
                 categories: [],
                 tweetTexts: [],
                 hashtags: [],
@@ -311,6 +312,7 @@
       const argsCopy = Object.assign({}, args);
       const consumerKey = argsCopy.consumerKey;
       const accessToken = argsCopy.accessToken;
+      const username = argsCopy.username;
       const url = args.apiUrl;
       const tag = args.tag || '';
       const self = this;
@@ -330,7 +332,7 @@
         }
       })
       .then(response => response.json())
-      .then(json => self._formatPocketList(json.list, tag));
+      .then(json => self._formatPocketList({ list: json.list, tag, username }));
 
       // TODO: make timeout configurable.
       const timeout = new Promise((resolve, reject) => {
@@ -346,8 +348,12 @@
     }
 
     // Data massages pocket link objects into our standard format.
-    _formatPocketList(list, tag) {
+    _formatPocketList(args) {
       let output = [];
+
+      const list = args.list;
+      const tag = args.tag;
+      const username = args.username;
 
       // Convert object to array
       output = R.values(list);
@@ -355,6 +361,7 @@
       // Only pull out the data we care about
       output = R.map((listItem) => ({
         source: 'pocket',
+        sourceDetails: username,
         tag,
         url: listItem.resolved_url,
         title: listItem.resolved_title,
