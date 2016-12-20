@@ -4,8 +4,8 @@
   "description": "",
   "main": "link-aggregator.js",
   "scripts": {
-    "server": "node proxy",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "proxy": "node proxy",
+    "test": "./node_modules/mocha/bin/mocha --check-leaks --use_strict"
   },
   "repository": {
     "type": "git",
@@ -17,10 +17,14 @@
     "url": "https://github.com/davidcalhoun/link-aggregator/issues"
   },
   "homepage": "https://github.com/davidcalhoun/link-aggregator#readme",
-  "devDependencies": {},
+  "devDependencies": {
+    "mocha": "^3.1.0"
+  },
   "dependencies": {
     "codebird": "^2.6.0",
+    "isomorphic-fetch": "^2.2.1",
+    "promise-polyfill": "^6.0.2",
     "ramda": "^0.22.1",
-    "whatwg-fetch": "^1.0.0"
+    "xmlhttprequest": "^1.8.0"
   }
 }
