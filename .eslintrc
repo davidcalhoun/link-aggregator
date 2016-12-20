@@ -1,0 +1,30 @@
+{
+  "extends": "airbnb",
+  "ecmaFeatures": {
+    "experimentalObjectRestSpread": true
+  },
+  "env": {
+    "browser": true,
+    "node": true,
+    "amd": true,
+    "commonjs": true,
+    "mocha": true
+  },
+  "globals": {
+    "CONFIG": true,
+    "NODE_ENV": true
+  },
+  "settings": {
+
+  },
+  "rules": {
+    "comma-dangle": ["error", "never"],
+    "global-require": 0,
+    "no-underscore-dangle": 0,
+    "max-len": ["error", {
+      "code": 100,
+      "comments": 100,
+      "ignoreUrls": true
+    }]
+  }
+}

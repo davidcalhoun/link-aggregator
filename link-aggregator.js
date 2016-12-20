@@ -1,372 +1,376 @@
-(function (root, factory) {
-    if (typeof define === 'function' && define.amd) {
-        // AMD. Register as an anonymous module.
-        define([
-            'codebird',
-            'ramda',
-            'isomorphic-fetch',
-            'promise-polyfill'
-        ], factory);
-    } else if (typeof exports === 'object') {
-        // Node. Does not work with strict CommonJS, but
-        // only CommonJS-like environments that support module.exports,
-        // like Node.
-        module.exports = factory(
-            require('codebird'),
-            require('ramda'),
-            require('isomorphic-fetch'),
-            require('promise-polyfill')
-        );
-    } else {
-        // Browser globals (root is window)
-        root.linkAggregator = factory(
-            root.Codebird,
-            root.R,
-            root.fetch,
-            root.Promise
-        );
-    }
-}(this, function(Codebird, R, fetch, Promise) {
-'use strict';
-
-// TODO fix when cert is deployed
-if (true || process && process.env.NODE_ENV !== 'production') {
+(function la(root, factory) {
+  if (typeof define === 'function' && define.amd) {
+    // AMD. Register as an anonymous module.
+    define([
+      'codebird',
+      'ramda',
+      'isomorphic-fetch',
+      'promise-polyfill'
+    ], factory);
+  } else if (typeof exports === 'object') {
+    // Node. Does not work with strict CommonJS, but
+    // only CommonJS-like environments that support module.exports,
+    // like Node.
+    module.exports = factory(
+      require('codebird'),
+      require('ramda'),
+      require('isomorphic-fetch'),
+      require('promise-polyfill')
+    );
+  } else {
+    // Browser globals (root is window)
+    // eslint-disable-next-line no-param-reassign
+    root.linkAggregator = factory(
+        root.Codebird,
+        root.R,
+        root.fetch,
+        root.Promise
+    );
+  }
+}(this, (Codebird, R, fetch, Promise) => {
+  // TODO fix when cert is deployed
+  if (process && process.env.NODE_ENV !== 'production') {
     // Running in Node
-    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-}
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+  }
 
-// Constructor
-function agg(args) {
-    // Self-instantiate if needed.
-    if (!this || !(this instanceof agg)) return new agg(args);
-    return this;
-};
+  // Constructor
+  class Aggregator {
+    constructor(args) {
+      // Self-instantiate if needed.
+      if (!this || !(this instanceof Aggregator)) return new Aggregator(args);
+      return this;
+    }
 
-agg.prototype.setTwitterConsumerKey = function(key, secret) {
-    this.codebird.setConsumerKey(key, secret);
-};
+    // Sets consumer key and secret for Twitter API.
+    setTwitterConsumerKey(key, secret) {
+      this.codebird.setConsumerKey(key, secret);
+    }
 
-agg.prototype.setTwitterToken = function(token, secret) {
-    this.codebird.setToken(token, secret);
-};
+    // Sets token and secret for Twitter API.
+    setTwitterToken(token, secret) {
+      this.codebird.setToken(token, secret);
+    }
 
-agg.prototype._toCategoryPairs = function(categories) {
-    return R.map((category) => {
-        var regexp = categories[category];
+    // Sets words to ignore in links (for filtering irrelevant links).
+    setIgnoreWords(words) {
+      this.ignoreWords = words || [];
+    }
 
-        if(Array.isArray(regexp)) regexp = regexp.join('|');
+    // Gets words to ignore in links.
+    getIgnoreWords() {
+      return this.ignoreWords;
+    }
+
+    // Transforms category classification config for easier lookups.
+    _toCategoryPairs(categories) {
+      return R.map((category) => {
+        let regexp = categories[category];
+
+        if (Array.isArray(regexp)) regexp = regexp.join('|');
 
         regexp = new RegExp(regexp, 'gi');
 
         return [
-            category,
-            {
-                keywords: categories[category],
-                regexp
-            }
+          category,
+          {
+            keywords: categories[category],
+            regexp
+          }
         ];
-    }, Object.keys(categories));
-}
-
-agg.prototype.setIgnoreWords = function(words) {
-    this.ignoreWords = (words) ? words : [];
-}
-
-agg.prototype.getIgnoreWords = function() {
-    return this.ignoreWords;
-}
-
-agg.prototype.setCategories = function(categories) {
-    this.categoriesUnprocessed = categories;
-    this.categories = (categories) ? R.compose(R.map(R.zipObj(['name', 'keywords'])), this._toCategoryPairs)(categories) : [];
-}
-
-agg.prototype.getCategories = function() {
-    return this.categoriesUnprocessed;
-}
-
-
-// https://dev.twitter.com/rest/reference/get/lists/statuses
-agg.prototype._asyncGetTwitterList = function (args, cb) {
-    args = args || {};
-
-    var self = this;
-
-    self._tweets = [];
-
-    // Init
-    if(!args.data) {
-        args.data = [];
-        args.iterations = 0;
+      }, Object.keys(categories));
     }
 
-    var listOptions = {
-        owner_screen_name: args.owner,
-        slug: args.name,
-        count: args.count || 100
-    };
+    // Sets up categories for topic tagging.
+    setCategories(categories) {
+      this.categoriesUnprocessed = categories;
+      this.categories = (categories) ?
+        R.compose(R.map(R.zipObj(['name', 'keywords'])), this._toCategoryPairs)(categories) :
+        [];
+    }
 
-    // Pagination
-    if ('max_id' in args) listOptions.max_id = args.max_id;
+    // Gets categories, for tagging link topics.
+    getCategories() {
+      return this.categoriesUnprocessed;
+    }
 
-    // TODO: send pagination calls out in parallel instead of sequentially
-    this.codebird.__call(
+    // Fetches links from a Twitter list.
+    // https://dev.twitter.com/rest/reference/get/lists/statuses
+    _asyncGetTwitterList(args, cb) {
+      const argsCopy = Object.assign({}, args);
+
+      // TODO: remove, replace with arrow fns
+      const self = this;
+
+      let listOptions = {};
+
+      // TODO: remove this global state
+      self._tweets = [];
+
+      // Init
+      if (!argsCopy.data) {
+        argsCopy.data = [];
+        argsCopy.iterations = 0;
+      }
+
+      listOptions = {
+        owner_screen_name: argsCopy.owner,
+        slug: argsCopy.name,
+        count: argsCopy.count || 100
+      };
+
+      // Pagination
+      if ('max_id' in argsCopy) listOptions.max_id = argsCopy.max_id;
+
+      // TODO: send pagination calls out in parallel instead of sequentially
+      this.codebird.__call(
         'lists_statuses',
         listOptions,
-        function (reply, rate, err) {
-            // TODO pay attention to rate limits
+        (reply, rate, err) => {
+          // TODO pay attention to rate limits
 
-            if (err) {
-                cb(err);
-            }
+          if (err) {
+            cb(err);
+          }
 
-            args.iterations++;
-            
-            if (args.multipleCallbacks) {
-                // Return current batch immediately
-                cb(null, reply);
-            } else {
-                // Group up results;
-                if (self._tweets) {
-                    // append
-                    self._tweets = self._tweets.concat(reply);
-                } else {
-                    // init
-                    self._tweets = reply;
-                }
-            }
+          argsCopy.iterations++;
 
-            // Reached the limit
-            // TODO pull out iteration #, or base results on filtered count
-            if (args.iterations > 4) {
-                if (args.multipleCallbacks) {
-                    // cb already sent above
-                    return;
-                } else {
-                    return cb(null, self._tweets);
-                }
-            }
+          if (argsCopy.multipleCallbacks) {
+            // Return current batch immediately.  This will result in the callback being called
+            // multiple times as the data comes in, which will be faster than waiting for one big
+            // callback at the end.
+            cb(null, reply);
+          } else if (!argsCopy.multipleCallbacks && self._tweets) {
+            // Group up results into one callback;
 
-            // Fetch the next page
-            if (reply.length === 0) {
-                cb('Twitter API reply is 0 length - hit a rate limit?');
-            } else {
-                args.max_id = reply[reply.length - 1].id;
-                self._asyncGetTwitterList(args, cb);
-            }
+            // append
+            self._tweets = self._tweets.concat(reply);
+          } else if (!argsCopy.multipleCallbacks && !self._tweets) {
+            // init
+            self._tweets = reply;
+          }
+
+          // Reached the limit
+          // TODO pull out iteration #, or base results on filtered count
+          if (argsCopy.iterations > 4) {
+            // cb already sent above
+            if (argsCopy.multipleCallbacks) return null;
+            return cb(null, self._tweets);
+          }
+
+          // Fetch the next page
+          if (reply.length === 0) {
+            return cb('Twitter API reply is 0 length - hit a rate limit?');
+          }
+
+          argsCopy.max_id = reply[reply.length - 1].id;
+          return self._asyncGetTwitterList(argsCopy, cb);
         }
-    );
-};
+      );
+    }
 
-agg.prototype._getCategoriesFromText = function(text, categories) {
-    var cats = [];
-    categories = categories || [];
+    // Searches a text string for matching categories.
+    _getCategoriesFromText(text, categories) {
+      let cats = [];
+      const categoriesCopy = categories || [];
 
-    cats = R.filter(function(category) {
-        return text.match(category.keywords.regexp);
-    })(categories);
-    
-    cats = R.pluck('name', cats);
+      cats = R.filter((category) => text.match(category.keywords.regexp))(categoriesCopy);
 
-    return cats;
-};
+      cats = R.pluck('name', cats);
 
+      return cats;
+    }
 
-// Get tweets from a user's Twitter list.  With keyword filtering to discard irrelevant tweets.
-agg.prototype.twitterList = function(args, cb) {
-    var self = this;
+    // Gets tweets from a user's Twitter list.  With keyword filtering to discard irrelevant tweets.
+    twitterList(args, cb) {
+      // TODO replace with arrow fns
+      const self = this;
 
-    // Make links first-class here instead of tweets themselves.
-    // Init if needed
-    if(!this.twitterLinks) this.twitterLinks = {};
+      // Stores by link, not by tweet.
+      if (!this.twitterLinks) this.twitterLinks = {};
 
-    this._asyncGetTwitterList(args, function(err, data){
+      // TODO: pull apart this big mess.
+      this._asyncGetTwitterList(args, (err, data) => {
+        let tweets = [];
+        let ignoreMatch = false;
+        let linkArray = [];
+
         // Sanity checks
-        if(err) {
-            throw new Error(err);
+        if (err) {
+          throw new Error(err);
+        }
+        if (data.length === 0) {
+          return cb('No tweets - network problems?');
         }
 
-        if(data.length === 0) {
-            return cb('No tweets - network problems?');
-        }
+        // Filter out irrelevant tweets.
+        tweets = R.reject((tweet) => {
+          // Discard tweets with no urls.
+          if (tweet.entities.urls.length === 0) return true;
 
-        var tweets;
+          // Discard ignored words.
+          ignoreMatch = R.find((ignoreWord) => {
+            let txt = `@${tweet.user.screen_name}: ${tweet.text}`;
 
-        // Discard tweets matching certain criteria
-        tweets = R.reject(function(tweet){
-            // No link, so discard
-            if(tweet.entities.urls.length === 0) return true;
+            const urls = R.pluck('expanded_url', tweet.entities.urls);
+            const joinedUrls = urls.join(', ');
 
-            // Discard if tweet contains an ignore word
-            var ignoreMatch = false;
-            ignoreMatch = R.find(function(ignoreWord){
-                var txt = '@' + tweet.user.screen_name + ':' + tweet.text;
+            // Append urls to text to simplify regexp logic
+            txt = `${txt} ${joinedUrls}`;
 
-                var urls = R.pluck('expanded_url', tweet.entities.urls);
+            return txt.match(new RegExp(ignoreWord, 'gi'));
+          })(self.ignoreWords);
 
-                // Append urls to text to simplify regexp logic
-                txt += ' ' + urls.join(', ');
-
-                return txt.match(new RegExp(ignoreWord, 'gi'));
-            })(self.ignoreWords);
-
-            return ignoreMatch;
+          return ignoreMatch;
         }, data);
 
 
         // Each tweet: data massaging
-        R.forEach(function(tweet){
-            // Pull out links from tweet
-            var urls = R.path(['entities', 'urls'], tweet);
+        R.forEach((tweet) => {
+          // Pull out links from tweet
+          const urls = R.path(['entities', 'urls'], tweet);
 
-            // Each url
-            R.forEach(function(url){
-                url = url.expanded_url;
+          // Each url
+          R.forEach((url) => {
+            const urlCopy = url.expanded_url;
+            let hashtags = [];
+            let categories = [];
 
-                // TODO resolve shortened urls like bit.ly
+            // TODO resolve shortened urls like bit.ly
 
-                if (!self.twitterLinks[url]) {
-                    // new url, so init
-                    self.twitterLinks[url] = {
-                        source: 'twitter',
-                        categories: [],
-                        tweetTexts: [],
-                        hashtags: [],
-                        media: [],  // photos, videos associated with the link
-                        mentionCount: 0,
-                        retweetCount: 0,
-                        favoriteCount: 0,
-                        firstMentionTime: (new Date(tweet.created_at)).getTime(),
-                        lastMentionTime: null,
-                    };
-                }
+            if (!self.twitterLinks[urlCopy]) {
+              // new url, so init
+              self.twitterLinks[urlCopy] = {
+                source: 'twitter',
+                categories: [],
+                tweetTexts: [],
+                hashtags: [],
+                media: [],  // photos, videos associated with the link
+                mentionCount: 0,
+                retweetCount: 0,
+                favoriteCount: 0,
+                firstMentionTime: (new Date(tweet.created_at)).getTime(),
+                lastMentionTime: null
+              };
+            }
 
-                // TODO use R.mergeWith instead here?
+            // TODO use R.mergeWith instead here?
 
-                self.twitterLinks[url].tweetTexts.push('@' + tweet.user.screen_name + ': ' + tweet.text);
-                self.twitterLinks[url].tweetTexts = R.uniq(self.twitterLinks[url].tweetTexts);
+            self.twitterLinks[url].tweetTexts.push(`@${tweet.user.screen_name}: ${tweet.text}`);
+            self.twitterLinks[url].tweetTexts = R.uniq(self.twitterLinks[url].tweetTexts);
 
-                var hashtags = R.pluck('text')(tweet.entities.hashtags);
-                self.twitterLinks[url].hashtags = R.uniq(self.twitterLinks[url].hashtags.concat(hashtags));
+            hashtags = R.pluck('text')(tweet.entities.hashtags);
+            self.twitterLinks[url].hashtags =
+              R.uniq(self.twitterLinks[url].hashtags.concat(hashtags));
 
-                if ('media' in tweet.entities) {
-                    self.twitterLinks[url].media = R.uniq(self.twitterLinks[url].media.concat(tweet.entities.media));
-                }
+            if ('media' in tweet.entities) {
+              self.twitterLinks[url].media =
+                R.uniq(self.twitterLinks[url].media.concat(tweet.entities.media));
+            }
 
-                self.twitterLinks[url].mentionCount++;
-                self.twitterLinks[url].retweetCount += tweet.retweet_count;
-                self.twitterLinks[url].favoriteCount += tweet.favorite_count;
-                self.twitterLinks[url].rank = self.twitterLinks[url].favoriteCount + self.twitterLinks[url].retweetCount + self.twitterLinks[url].mentionCount;
-                self.twitterLinks[url].lastMentionTime = (new Date(tweet.created_at)).getTime();
+            self.twitterLinks[url].mentionCount++;
+            self.twitterLinks[url].retweetCount += tweet.retweet_count;
+            self.twitterLinks[url].favoriteCount += tweet.favorite_count;
+            self.twitterLinks[url].rank = self.twitterLinks[url].favoriteCount +
+              self.twitterLinks[url].retweetCount + self.twitterLinks[url].mentionCount;
+            self.twitterLinks[url].lastMentionTime = (new Date(tweet.created_at)).getTime();
 
-                //
-                var categories = [];
-                var tweetsPlusFullLinks = [];
-                R.forEach(function(subtweet){
-                    var cats = self._getCategoriesFromText(subtweet + ', ' + url, self.categories);
+            R.forEach((subtweet) => {
+              const cats = self._getCategoriesFromText(`${subtweet}, ${url}`, self.categories);
 
-                    if(cats.length > 0) {
-                        categories = categories.concat(cats);
-                    }
-                }, self.twitterLinks[url].tweetTexts);
-                // TODO: do a category search on all URLs in tweet instead of just one (url)
+              if (cats.length > 0) {
+                categories = categories.concat(cats);
+              }
+            }, self.twitterLinks[url].tweetTexts);
+            // TODO: do a category search on all URLs in tweet instead of just one (url)
 
-                self.twitterLinks[url].categories = R.uniq(self.twitterLinks[url].categories.concat(categories));
-            }, urls);
+            self.twitterLinks[url].categories =
+              R.uniq(self.twitterLinks[url].categories.concat(categories));
+          }, urls);
         }, tweets);
-
 
         // Sort tweets according to date, then link count
 
-        // Convert to array
-        var linkArray = R.compose(R.map(R.zipObj(['url', 'details'])), R.toPairs)(self.twitterLinks);
+        // Convert to array.
+        linkArray = R.compose(R.map(R.zipObj(['url', 'details'])), R.toPairs)(self.twitterLinks);
 
         // Remove nested 'details' object.
-        linkArray = R.map(function(link){return R.assoc('url', link.url, link.details);}, linkArray);
+        linkArray = R.map((link) => R.assoc('url', link.url, link.details), linkArray);
 
         // Sort by mentions, rewtweets, favorites all combined
         linkArray = R.reverse(R.sortBy(R.prop('rank'))(linkArray));
 
-        cb(null, linkArray);
-    });
-};
+        return cb(null, linkArray);
+      });
+    }
 
-// Get a user's Pocket list.  No keyword filtering here, as Pocket is more user-curated.
-// TODO: pagination
-agg.prototype.getPocketList = function(args, done) {
-    args = args || {};
+    // Gets a user's Pocket list.  No keyword filtering needed here, as Pocket is more curated
+    // already.
+    // TODO: pagination
+    getPocketList(args, done) {
+      const argsCopy = Object.assign({}, args);
+      const consumerKey = argsCopy.consumerKey;
+      const accessToken = argsCopy.accessToken;
+      const url = args.apiUrl;
+      const tag = args.tag || '';
+      const self = this;
 
-    var consumerKey = args.consumerKey;
-    var accessToken = args.accessToken;
-    var url = args.apiUrl;
-
-    var fetchPocket = fetch(url, {
+      const fetchPocket = fetch(url, {
         method: 'post',
         mode: 'cors',
         body: JSON.stringify({
-            // See http://www.jamesfmackenzie.com/getting-started-with-the-pocket-developer-api/
-            consumer_key: consumerKey,
-            access_token: accessToken,
-            tag: args.tag || ''
+          // See http://www.jamesfmackenzie.com/getting-started-with-the-pocket-developer-api/
+          consumer_key: consumerKey,
+          access_token: accessToken,
+          tag
         }),
         headers: {
-            'X-Accept': 'application/json',
-            'Content-Type': 'application/json; charset=UTF8'
+          'X-Accept': 'application/json',
+          'Content-Type': 'application/json; charset=UTF8'
         }
-    })
-    .then(response => {
-        return response.json();
-    })
-    .then(json => {
-        return this._formatPocketList(json.list);
-    })
-    .catch(error => {
-        console.error(error.message);
-        done(error.message);
-    });
+      })
+      .then(response => response.json())
+      .then(json => self._formatPocketList(json.list, tag));
 
-    var timeout = new Promise(function (resolve, reject) {
-        setTimeout(() => reject(new Error('request timeout')), 8000)
-    });
+      // TODO: make timeout configurable.
+      const timeout = new Promise((resolve, reject) => {
+        setTimeout(() => reject(new Error('request timeout')), 8000);
+      });
 
-    return Promise.race([
+      Promise.race([
         fetchPocket,
         timeout
-    ].then(function(val) {
-        done(null, val);
-    }));
-};
+      ])
+      .then((val) => done(null, val))
+      .catch(error => done(error.message));
+    }
 
-var MS_IN_SECONDS = 1000;
+    // Data massages pocket link objects into our standard format.
+    _formatPocketList(list, tag) {
+      let output = [];
 
-// Data massaging for Pocket data.
-agg.prototype._formatPocketList = function(list) {
-    var self = this;
-    var output;
+      // Convert object to array
+      output = R.values(list);
 
-    // Convert object to array
-    output = R.values(list);
+      // Only pull out the data we care about
+      output = R.map((listItem) => ({
+        source: 'pocket',
+        tag,
+        url: listItem.resolved_url,
+        title: listItem.resolved_title,
+        time_added: listItem.time_added * 1000,
+        id: listItem.item_id, // Pocket ID
+        excerpt: listItem.excerpt,
+        categories: this._getCategoriesFromText(`${listItem.resolved_title}, ${listItem.excerpt}`,
+          this.categories)
+      }), output);
 
-    // Only pull out the data we care about
-    output = R.map((listItem) => {
-        return {
-            source: 'pocket',
-            url: listItem.resolved_url,
-            title: listItem.resolved_title,
-            time_added: listItem.time_added * MS_IN_SECONDS,
-            id: listItem.item_id, // Pocket ID
-            excerpt: listItem.excerpt,
-            categories: this._getCategoriesFromText(listItem.resolved_title + ', ' + listItem.excerpt, this.categories)
-        };
-    }, output);
+      // Sort by time_added, newest on top
+      output = R.reverse(R.sortBy(R.prop('time_added'))(output));
 
-    // Sort by time_added, newest on top
-    output = R.reverse(R.sortBy(R.prop('time_added'))(output));
+      return output;
+    }
+  }
 
-    return output;
-};
-
-
-return agg;
-
+  return Aggregator;
 }));
