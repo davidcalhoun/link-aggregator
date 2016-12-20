@@ -1,55 +1,89 @@
 (function (root, factory) {
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(['codebird', 'ramda'], factory);
+        define([
+            'codebird',
+            'ramda',
+            'isomorphic-fetch',
+            'promise-polyfill'
+        ], factory);
     } else if (typeof exports === 'object') {
         // Node. Does not work with strict CommonJS, but
         // only CommonJS-like environments that support module.exports,
         // like Node.
-        module.exports = factory(require('codebird'), require('ramda'));
+        module.exports = factory(
+            require('codebird'),
+            require('ramda'),
+            require('isomorphic-fetch'),
+            require('promise-polyfill')
+        );
     } else {
         // Browser globals (root is window)
-        root.linkAggregator = factory(root.codebird, root.R);
+        root.linkAggregator = factory(
+            root.Codebird,
+            root.R,
+            root.fetch,
+            root.Promise
+        );
     }
-}(this, function(Codebird, R) {
-
+}(this, function(Codebird, R, fetch, Promise) {
 'use strict';
 
+// TODO fix when cert is deployed
+if (true || process && process.env.NODE_ENV !== 'production') {
+    // Running in Node
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+}
+
 // Constructor
-var agg = function agg(args) {
+function agg(args) {
     // Self-instantiate if needed.
-    if (!this || !this instanceof agg) {
-        return new agg(args);
-    }
-
-    // Twitter config
-    if ('twitter' in args) {
-        this.twitter = args.twitter;
-
-        // Init Codebird (helper for accessing Twitter API)
-        // Codebird keys (passed to Twitter API)
-        this.codebird = new Codebird;
-        this.codebird.setConsumerKey(this.twitter.consumer_key.key, this.twitter.consumer_key.secret);
-        this.codebird.setToken(this.twitter.access_token.token, this.twitter.access_token.token_secret);
-
-    }
-
-    // Pocket config
-    if ('pocket' in args) {
-        // Pocket API
-        this.pocket = args.pocket;
-    }
-
-
-    // Ignore words config
-    this.ignoreWords = ('ignoreWords' in args) ? args.ignoreWords : [];
-
-    if ('categories' in args) {
-        this.categories = R.compose(R.map(R.zipObj(['name', 'keywords'])), R.toPairs)(args.categories);
-    }
-
+    if (!this || !(this instanceof agg)) return new agg(args);
     return this;
 };
+
+agg.prototype.setTwitterConsumerKey = function(key, secret) {
+    this.codebird.setConsumerKey(key, secret);
+};
+
+agg.prototype.setTwitterToken = function(token, secret) {
+    this.codebird.setToken(token, secret);
+};
+
+agg.prototype._toCategoryPairs = function(categories) {
+    return R.map((category) => {
+        var regexp = categories[category];
+
+        if(Array.isArray(regexp)) regexp = regexp.join('|');
+
+        regexp = new RegExp(regexp, 'gi');
+
+        return [
+            category,
+            {
+                keywords: categories[category],
+                regexp
+            }
+        ];
+    }, Object.keys(categories));
+}
+
+agg.prototype.setIgnoreWords = function(words) {
+    this.ignoreWords = (words) ? words : [];
+}
+
+agg.prototype.getIgnoreWords = function() {
+    return this.ignoreWords;
+}
+
+agg.prototype.setCategories = function(categories) {
+    this.categoriesUnprocessed = categories;
+    this.categories = (categories) ? R.compose(R.map(R.zipObj(['name', 'keywords'])), this._toCategoryPairs)(categories) : [];
+}
+
+agg.prototype.getCategories = function() {
+    return this.categoriesUnprocessed;
+}
 
 
 // https://dev.twitter.com/rest/reference/get/lists/statuses
@@ -124,6 +158,19 @@ agg.prototype._asyncGetTwitterList = function (args, cb) {
     );
 };
 
+agg.prototype._getCategoriesFromText = function(text, categories) {
+    var cats = [];
+    categories = categories || [];
+
+    cats = R.filter(function(category) {
+        return text.match(category.keywords.regexp);
+    })(categories);
+    
+    cats = R.pluck('name', cats);
+
+    return cats;
+};
+
 
 // Get tweets from a user's Twitter list.  With keyword filtering to discard irrelevant tweets.
 agg.prototype.twitterList = function(args, cb) {
@@ -191,7 +238,7 @@ agg.prototype.twitterList = function(args, cb) {
                         favoriteCount: 0,
                         firstMentionTime: (new Date(tweet.created_at)).getTime(),
                         lastMentionTime: null,
-                    }
+                    };
                 }
 
                 // TODO use R.mergeWith instead here?
@@ -216,14 +263,7 @@ agg.prototype.twitterList = function(args, cb) {
                 var categories = [];
                 var tweetsPlusFullLinks = [];
                 R.forEach(function(subtweet){
-                    var cats = R.filter(function(category) {
-                        var keywords = category.keywords.join('|');
-                        var subtweetPlusURL = subtweet + ', ' + url;
-                        return subtweetPlusURL.match(new RegExp(keywords, 'gi'));
-                    })(self.categories);
-
-                    cats = cats || [];
-                    cats = R.pluck('name', cats);
+                    var cats = self._getCategoriesFromText(subtweet + ', ' + url, self.categories);
 
                     if(cats.length > 0) {
                         categories = categories.concat(cats);
@@ -242,60 +282,70 @@ agg.prototype.twitterList = function(args, cb) {
         var linkArray = R.compose(R.map(R.zipObj(['url', 'details'])), R.toPairs)(self.twitterLinks);
 
         // Remove nested 'details' object.
-        linkArray = R.map(function(link){return R.assoc('url', link.url, link.details)}, linkArray);
+        linkArray = R.map(function(link){return R.assoc('url', link.url, link.details);}, linkArray);
 
         // Sort by mentions, rewtweets, favorites all combined
         linkArray = R.reverse(R.sortBy(R.prop('rank'))(linkArray));
 
         cb(null, linkArray);
     });
-}
+};
 
 // Get a user's Pocket list.  No keyword filtering here, as Pocket is more user-curated.
 // TODO: pagination
-agg.prototype.getPocketList = function(args, cb) {
-    var self = this;
+agg.prototype.getPocketList = function(args) {
+    args = args || {};
 
-    // Pocket API doesn't support CORS, so we need a proxy server running proxy.js here
-    var url = this.pocket.proxy + '?url=getpocket.com/v3/get/';
+    var consumerKey = args.consumerKey;
+    var accessToken = args.accessToken;
+    var url = args.apiUrl;
 
-    var body = {
-        consumer_key: this.pocket.consumer_key,
-        access_token: this.pocket.access_token,
-        tag: ('tag' in this.pocket) ? this.pocket.tag : 'fbfe'  // TODO: make configurable
-    };
-
-    var headers = {
-        'X-Accept': 'application/json',
-        'Content-Type': 'application/json; charset=UTF8'
-    }
-
-    // http://www.jamesfmackenzie.com/getting-started-with-the-pocket-developer-api/
-    fetch(url, {
+    var fetchPocket = fetch(url, {
         method: 'post',
         mode: 'cors',
-        body: JSON.stringify(body),
-        headers: headers
-    }).then(function(response) {
+        body: JSON.stringify({
+            // See http://www.jamesfmackenzie.com/getting-started-with-the-pocket-developer-api/
+            consumer_key: consumerKey,
+            access_token: accessToken,
+            tag: args.tag || ''
+        }),
+        headers: {
+            'X-Accept': 'application/json',
+            'Content-Type': 'application/json; charset=UTF8'
+        }
+    })
+    .then(response => {
         return response.json();
-    }).then(function(json) {
-        cb(null, self._formatPocketList(json.list));
-    }).catch(function(e) {
-        cb(e);
+    })
+    .then(json => {
+        return this._formatPocketList(json.list);
+    })
+    .catch(error => {
+        console.error(error.message);
     });
-}
+
+    var timeout = new Promise(function (resolve, reject) {
+        setTimeout(() => reject(new Error('request timeout')), 8000)
+    });
+
+    return Promise.race([
+        fetchPocket,
+        timeout
+    ])
+};
 
 var MS_IN_SECONDS = 1000;
 
 // Data massaging for Pocket data.
 agg.prototype._formatPocketList = function(list) {
+    var self = this;
     var output;
 
     // Convert object to array
     output = R.values(list);
 
     // Only pull out the data we care about
-    output = R.map(function(listItem){
+    output = R.map((listItem) => {
         return {
             source: 'pocket',
             url: listItem.resolved_url,
@@ -303,7 +353,8 @@ agg.prototype._formatPocketList = function(list) {
             time_added: listItem.time_added * MS_IN_SECONDS,
             id: listItem.item_id, // Pocket ID
             excerpt: listItem.excerpt,
-        }
+            categories: this._getCategoriesFromText(listItem.resolved_title + ', ' + listItem.excerpt, this.categories)
+        };
     }, output);
 
     // Sort by time_added, newest on top
