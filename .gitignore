@@ -6,3 +6,4 @@
 # Etc
 node_modules
 index.html
+test/api-config.js
