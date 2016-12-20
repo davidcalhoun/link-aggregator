@@ -293,7 +293,7 @@ agg.prototype.twitterList = function(args, cb) {
 
 // Get a user's Pocket list.  No keyword filtering here, as Pocket is more user-curated.
 // TODO: pagination
-agg.prototype.getPocketList = function(args) {
+agg.prototype.getPocketList = function(args, done) {
     args = args || {};
 
     var consumerKey = args.consumerKey;
@@ -322,6 +322,7 @@ agg.prototype.getPocketList = function(args) {
     })
     .catch(error => {
         console.error(error.message);
+        done(error.message);
     });
 
     var timeout = new Promise(function (resolve, reject) {
@@ -331,7 +332,9 @@ agg.prototype.getPocketList = function(args) {
     return Promise.race([
         fetchPocket,
         timeout
-    ])
+    ].then(function(val) {
+        done(null, val);
+    }));
 };
 
 var MS_IN_SECONDS = 1000;
