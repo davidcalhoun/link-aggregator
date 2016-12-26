@@ -231,7 +231,7 @@
         R.forEach((tweet) => {
           // Pull out links from tweet
           const urls = R.path(['entities', 'urls'], tweet);
-console.log(222, urls)
+
           // Each url
           R.forEach((url) => {
             const urlCopy = url.expanded_url;
