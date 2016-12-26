@@ -1,3 +1,4 @@
 .gitignore
 .npmignore
 test/api-config.js
+yarn.lock
