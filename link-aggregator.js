@@ -272,7 +272,7 @@
               self.twitterLinks[urlCopy].media =
                 R.uniq(self.twitterLinks[urlCopy].media.concat(tweet.entities.media));
             }
-console.log(111, tweet)
+
             self.twitterLinks[urlCopy].mentionCount++;
             self.twitterLinks[urlCopy].retweetCount += tweet.retweet_count;
             self.twitterLinks[urlCopy].favoriteCount += tweet.favorite_count;
