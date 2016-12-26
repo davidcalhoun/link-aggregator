@@ -34,12 +34,10 @@
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
   }
 
-  // Constructor
   class Aggregator {
     constructor(args) {
-      // Self-instantiate if needed.
-      if (!this || !(this instanceof Aggregator)) return new Aggregator(args);
-      return this;
+      // Init Codebird (helper for accessing Twitter API)
+      this.codebird = new Codebird;
     }
 
     // Sets consumer key and secret for Twitter API.
@@ -130,7 +128,11 @@
           // TODO pay attention to rate limits
 
           if (err) {
-            cb(err);
+            return cb(err);
+          }
+
+          if (reply.errors) {
+            return cb(JSON.stringify(reply.errors));
           }
 
           argsCopy.iterations++;
@@ -187,17 +189,17 @@
       const self = this;
 
       // Stores by link, not by tweet.
-      if (!this.twitterLinks) this.twitterLinks = {};
+      if (!self.twitterLinks) self.twitterLinks = {};
 
       // TODO: pull apart this big mess.
-      this._asyncGetTwitterList(args, (err, data) => {
+      self._asyncGetTwitterList(args, (err, data) => {
         let tweets = [];
         let ignoreMatch = false;
         let linkArray = [];
 
         // Sanity checks
         if (err) {
-          throw new Error(err);
+          return cb(err);
         }
         if (data.length === 0) {
           return cb('No tweets - network problems?');
@@ -206,7 +208,7 @@
         // Filter out irrelevant tweets.
         tweets = R.reject((tweet) => {
           // Discard tweets with no urls.
-          if (tweet.entities.urls.length === 0) return true;
+          if (!tweet || !tweet.entities || tweet.entities.urls.length === 0) return true;
 
           // Discard ignored words.
           ignoreMatch = R.find((ignoreWord) => {
@@ -219,7 +221,7 @@
             txt = `${txt} ${joinedUrls}`;
 
             return txt.match(new RegExp(ignoreWord, 'gi'));
-          })(self.ignoreWords);
+          })(self.ignoreWords || []);
 
           return ignoreMatch;
         }, data);
@@ -229,7 +231,7 @@
         R.forEach((tweet) => {
           // Pull out links from tweet
           const urls = R.path(['entities', 'urls'], tweet);
-
+console.log(222, urls)
           // Each url
           R.forEach((url) => {
             const urlCopy = url.expanded_url;
@@ -257,36 +259,38 @@
 
             // TODO use R.mergeWith instead here?
 
-            self.twitterLinks[url].tweetTexts.push(`@${tweet.user.screen_name}: ${tweet.text}`);
-            self.twitterLinks[url].tweetTexts = R.uniq(self.twitterLinks[url].tweetTexts);
+            if (!self.twitterLinks[urlCopy]) return;
+
+            self.twitterLinks[urlCopy].tweetTexts.push(`@${tweet.user.screen_name}: ${tweet.text}`);
+            self.twitterLinks[urlCopy].tweetTexts = R.uniq(self.twitterLinks[urlCopy].tweetTexts);
 
             hashtags = R.pluck('text')(tweet.entities.hashtags);
-            self.twitterLinks[url].hashtags =
-              R.uniq(self.twitterLinks[url].hashtags.concat(hashtags));
+            self.twitterLinks[urlCopy].hashtags =
+              R.uniq(self.twitterLinks[urlCopy].hashtags.concat(hashtags));
 
             if ('media' in tweet.entities) {
-              self.twitterLinks[url].media =
-                R.uniq(self.twitterLinks[url].media.concat(tweet.entities.media));
+              self.twitterLinks[urlCopy].media =
+                R.uniq(self.twitterLinks[urlCopy].media.concat(tweet.entities.media));
             }
-
-            self.twitterLinks[url].mentionCount++;
-            self.twitterLinks[url].retweetCount += tweet.retweet_count;
-            self.twitterLinks[url].favoriteCount += tweet.favorite_count;
-            self.twitterLinks[url].rank = self.twitterLinks[url].favoriteCount +
-              self.twitterLinks[url].retweetCount + self.twitterLinks[url].mentionCount;
-            self.twitterLinks[url].lastMentionTime = (new Date(tweet.created_at)).getTime();
+console.log(111, tweet)
+            self.twitterLinks[urlCopy].mentionCount++;
+            self.twitterLinks[urlCopy].retweetCount += tweet.retweet_count;
+            self.twitterLinks[urlCopy].favoriteCount += tweet.favorite_count;
+            self.twitterLinks[urlCopy].rank = self.twitterLinks[urlCopy].favoriteCount +
+              self.twitterLinks[urlCopy].retweetCount + self.twitterLinks[urlCopy].mentionCount;
+            self.twitterLinks[urlCopy].lastMentionTime = (new Date(tweet.created_at)).getTime();
 
             R.forEach((subtweet) => {
-              const cats = self._getCategoriesFromText(`${subtweet}, ${url}`, self.categories);
+              const cats = self._getCategoriesFromText(`${subtweet}, ${urlCopy}`, self.categories);
 
               if (cats.length > 0) {
                 categories = categories.concat(cats);
               }
-            }, self.twitterLinks[url].tweetTexts);
-            // TODO: do a category search on all URLs in tweet instead of just one (url)
+            }, self.twitterLinks[urlCopy].tweetTexts);
+            // TODO: do a category search on all urls in tweet instead of just one (url)
 
-            self.twitterLinks[url].categories =
-              R.uniq(self.twitterLinks[url].categories.concat(categories));
+            self.twitterLinks[urlCopy].categories =
+              R.uniq(self.twitterLinks[urlCopy].categories.concat(categories));
           }, urls);
         }, tweets);
 
