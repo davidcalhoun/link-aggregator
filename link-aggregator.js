@@ -184,7 +184,7 @@
     }
 
     // Gets tweets from a user's Twitter list.  With keyword filtering to discard irrelevant tweets.
-    twitterList(args, cb) {
+    twitterList(args, done) {
       // TODO replace with arrow fns
       const self = this;
 
@@ -199,10 +199,10 @@
 
         // Sanity checks
         if (err) {
-          return cb(err);
+          return done(`link-aggregator/twitterList ${err}`);
         }
         if (data.length === 0) {
-          return cb('No tweets - network problems?');
+          return done(`link-aggregator/twitterList No tweets - network problems`);
         }
 
         // Filter out irrelevant tweets.
@@ -305,7 +305,7 @@
         // Sort by mentions, rewtweets, favorites all combined
         linkArray = R.reverse(R.sortBy(R.prop('rank'))(linkArray));
 
-        return cb(null, linkArray);
+        return done(null, linkArray);
       });
     }
 
@@ -348,7 +348,7 @@
         timeout
       ])
       .then((val) => done(null, val))
-      .catch(error => done(error.message));
+      .catch(error => done(`link-aggregator/getPocketList ${error.message}`));
     }
 
     // Data massages pocket link objects into our standard format.
