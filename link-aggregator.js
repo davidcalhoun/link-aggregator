@@ -335,7 +335,13 @@
           'Content-Type': 'application/json; charset=UTF8'
         }
       })
-      .then(response => response.json())
+      .then(response => {
+        if (response.ok) {
+          return response.json();
+        } else {
+          new Error(`link-aggregator/getPocketList url: ${url} HTTP status ${response.status}`);
+        }
+      })
       .then(json => self._formatPocketList({ list: json.list, tag, username }));
 
       // TODO: make timeout configurable.
