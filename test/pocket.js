@@ -1,26 +1,40 @@
 describe('pocket', function(){
-    var assert = require('assert');
-    var config = require('./api-config');
-    var la = require('../link-aggregator');
-    var linkAggregator;
+    const assert = require('assert');
+    const config = require('./api-config');
+    const la = require('../link-aggregator');
+    const Promise = require('promise-polyfill');
+    const { pocketStub } = require('./stubs');
+
+    let linkAggregator;
+    let pocketConfig = {};
 
     before(function() {
-        linkAggregator = la(config);
+      linkAggregator = new la(config);
+
+      pocketConfig = {
+        consumerKey: config.pocket.consumer_key,
+        accessToken: config.pocket.access_token,
+        apiUrl: config.pocket.proxy,
+        fetchStub: () => {
+          return new Promise((resolve, reject) => {
+            resolve(pocketStub);
+          })
+        }
+      };
     });
 
     it('gets a Pocket list', function(done){
       this.timeout(10000);
 
-      linkAggregator.getPocketList()
-        .then((data) => {
-          console.log(444, data)
-          assert.equal(typeof data, 'object');
-          done();
-        })
-        .catch((error) => {
-          assert.fail();
-          done();
-        })
+      linkAggregator.setCategories({
+        'Accessibility': ['a', 'b', 'c', 'd', 'e', 'f', 'g'],
+      });
+
+      linkAggregator.getPocketList(pocketConfig, (err, data) => {
+        assert.equal(err, null);
+        assert.equal(typeof data, 'object');
+        done();
+      });
     });
 
     it('returns categories', function(done){
@@ -30,18 +44,17 @@ describe('pocket', function(){
         'Accessibility': ['a', 'b', 'c', 'd', 'e', 'f', 'g'],
       });
 
-      linkAggregator.getPocketList({
+      const config = Object.assign({}, pocketConfig, {
         tag: 'fbfe'
-      })
-      .then((data) => {
+      });
+
+      linkAggregator.getPocketList(config, (err, data) => {
+        assert.equal(err, null);
         assert.equal(typeof data, 'object');
         assert.equal(Array.isArray(data), true);
+
         assert.notEqual(data[0].categories.length, 0);
 
-        done();
-      })
-      .catch((error) => {
-        assert.fail();
         done();
       })
     });

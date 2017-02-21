@@ -1,11 +1,14 @@
-describe.skip('twitter', function(){
+describe('twitter', function(){
     var assert = require('assert');
     var config = require('./api-config');
     var la = require('../link-aggregator');
+    const Promise = require('promise-polyfill');
+    const { twitterStub } = require('./stubs');
+
     var linkAggregator;
 
     before(function() {
-        linkAggregator = la(config);
+      linkAggregator = new la(config);
     });
 
     it('gets a Twitter list', function(done){
@@ -15,7 +18,8 @@ describe.skip('twitter', function(){
       linkAggregator.twitterList({
         owner: 'franksvalli',
         name: 'frontend',
-        multipleCallbacks: false
+        multipleCallbacks: false,
+        dataStub: twitterStub
       }, (err, data) => {
         assert.equal(err, null);
         assert.equal(typeof data, 'object');
@@ -75,7 +79,8 @@ describe.skip('twitter', function(){
       linkAggregator.twitterList({
         owner: 'franksvalli',
         name: 'frontend',
-        multipleCallbacks: false
+        multipleCallbacks: false,
+        dataStub: twitterStub
       }, (err, data) => {
         assert.equal(err, null);
         assert.equal(typeof data, 'object');

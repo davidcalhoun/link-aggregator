@@ -5,7 +5,7 @@ describe('api-keys', function(){
     var LinkAggregator;
 
     before(function() {
-        LinkAggregator = la(config);
+        LinkAggregator = new la(config);
     });
 
     it('is exported as an npm module', function(){
@@ -13,15 +13,7 @@ describe('api-keys', function(){
         assert.equal(typeof linkAggregator, 'function');
     });
 
-    it('initializes Twitter', function() {
-        assert.equal(typeof LinkAggregator.twitter, 'object');
-    });
-
     it('initializes Codebird', function() {
         assert.equal(typeof LinkAggregator.codebird, 'object');
-    });
-
-    it('initializes Pocket', function() {
-        assert.equal(typeof LinkAggregator.pocket, 'object');
     });
 });
