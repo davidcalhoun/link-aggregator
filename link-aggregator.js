@@ -502,7 +502,7 @@ class Aggregator {
 
       // Handles bad HTTP status codes.
       if (error || response.statusCode !== 200) {
-        winston.error(`${fnName}: ${urlCopy} ${error} HTTP ${resp.statusCode}`);
+        winston.debug(`${fnName}: ${error} HTTP ${resp.statusCode} for ${urlCopy}`);
         return done(null, urlDetails);
       }
 
@@ -512,7 +512,7 @@ class Aggregator {
       urlCopy = this.removeJunkURLParams(newUrl);
 
       if (wasRedirected) {
-        winston.debug(`${fnName}: redirect, so rewriting ${url} to ${urlCopy}`);
+        //winston.debug(`${fnName}: redirect, so rewriting ${url} to ${urlCopy}`);
 
         // Cache redirect info, so this URL won't need to be fetched again.
         client.set(`${redisNS}${url}`, JSON.stringify({
@@ -755,6 +755,10 @@ class Aggregator {
     const cutoffTimeMS = Date.now() - expiry;
     
     const isURLStale = (url) => {
+      if(!url) {
+        winston.error(`${fnName}: url object is null`);
+        return true;
+      }
       const timestamp = url[prop];
       const timestampArr = (Array.isArray(timestamp)) ? timestamp : [ timestamp ];
 
