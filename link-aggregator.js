@@ -523,7 +523,7 @@ class Aggregator {
       urlDetails.url = urlCopy;
 
       // Load HTML body into Cherrio for HTML parsing.
-      let this.$ = cheerio.load(body);
+      const $ = cheerio.load(body);
 
       // Wrap in try-catch for large pages that may fail (needed due to bug in domutils).
       // See http://bit.ly/2iTvQNS
@@ -539,10 +539,6 @@ class Aggregator {
         urlDetails.articleTwitterAuthor = this.getTwitterAuthor($);
 
         urlDetails.articleTimestamp = this.getPublishedTime($);
-
-        // Cheerio has memory leak issues - attempt to free it up here.
-        // See https://github.com/cheeriojs/cheerio/issues/830
-        delete this.$;
       } catch (e) {
         winston.error(`${fnName}: Failed to parse ${urlCopy}: ${e.message} ${e.stack}`);
       }
@@ -981,8 +977,6 @@ class Aggregator {
     const maxRetweets = this.getMaxTweetRetweetCount(urlObjects);
     const maxMentions = this.getMaxTweetMentionCount(urlObjects);
     const maxNumPocketIDs = this.getMaxNumPocketIDs(urlObjects);
-
-    console.log(JSON.stringify(urlObjects, null, 2))
 
     urlObjects.forEach((urlObj) => {
       const urlObjCopy = Object.assign({}, urlObj);
