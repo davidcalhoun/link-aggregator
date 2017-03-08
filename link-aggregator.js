@@ -523,7 +523,7 @@ class Aggregator {
       urlDetails.url = urlCopy;
 
       // Load HTML body into Cherrio for HTML parsing.
-      let $ = cheerio.load(body);
+      let this.$ = cheerio.load(body);
 
       // Wrap in try-catch for large pages that may fail (needed due to bug in domutils).
       // See http://bit.ly/2iTvQNS
@@ -541,7 +541,8 @@ class Aggregator {
         urlDetails.articleTimestamp = this.getPublishedTime($);
 
         // Cheerio has memory leak issues - attempt to free it up here.
-        delete $;
+        // See https://github.com/cheeriojs/cheerio/issues/830
+        delete this.$;
       } catch (e) {
         winston.error(`${fnName}: Failed to parse ${urlCopy}: ${e.message} ${e.stack}`);
       }
@@ -638,17 +639,13 @@ class Aggregator {
   getTwitterAuthor($) {
     let author;
 
-    let twitterCreatorTag = $('meta[name="twitter:creator"]');
+    const twitterCreatorTag = $('meta[name="twitter:creator"]');
     author = twitterCreatorTag.attr('content');
 
     if (!author) {
-      let twitterSiteTag = $('meta[name="twitter:site"]');
+      const twitterSiteTag = $('meta[name="twitter:site"]');
       author = twitterSiteTag.attr('content');
     }
-
-    // Free up mem.
-    delete twitterCreatorTag;
-    delete twitterSiteTag;
 
     return author || '';
   }
@@ -659,17 +656,13 @@ class Aggregator {
   getPageTitle($) {
     let title;
 
-    let ogTitleTag = $('meta[property="og:title"]');
+    const ogTitleTag = $('meta[property="og:title"]');
     title = ogTitleTag.attr('content');
 
     if (!title) {
-      let titleTag = $('title');
+      const titleTag = $('title');
       title = titleTag.text().trim();
     }
-
-    // Free up mem.
-    delete ogTitleTag;
-    delete titleTag;
 
     return title || '';
   }
@@ -681,18 +674,18 @@ class Aggregator {
     let excerpt = '';
 
     // Check for Open Graph description.
-    let ogDescriptionTag = $('meta[property="og:description"]');
+    const ogDescriptionTag = $('meta[property="og:description"]');
     excerpt = ogDescriptionTag.attr('content');
 
     // Check for Twitter description.
     if (!excerpt) {
-      let twitterDescriptionTag = $('meta[name="twitter:description"]');
+      const twitterDescriptionTag = $('meta[name="twitter:description"]');
       excerpt = twitterDescriptionTag.attr('content');;
     }
 
     // Check for regular meta description tag.
     if (!excerpt) {
-      let metaDescriptionTag = $('meta[name="description"]');
+      const metaDescriptionTag = $('meta[name="description"]');
       excerpt = metaDescriptionTag.attr('content');
     }
 
@@ -715,11 +708,6 @@ class Aggregator {
     // Trim excerpt.
     const maxLength = 200;
     excerpt = excerpt.split(' ').reduce((a, b) => {return (a.length > maxLength) ? a : `${a} ${b}`});
-
-    // Free up mem.
-    delete ogDescriptionTag;
-    delete twitterDescriptionTag;
-    delete metaDescriptionTag;
 
     return excerpt;
   }
