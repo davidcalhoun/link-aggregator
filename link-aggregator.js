@@ -1079,6 +1079,8 @@ class Aggregator {
    * TODO: trusted sources ranking
    */
   getURLRank(urlObj, args) {
+    const fnName = `${moduleName}/getURLRank`;
+
     const {
       maxFaves,
       maxRetweets,
@@ -1087,21 +1089,23 @@ class Aggregator {
     } = args;
 
     const {
+      url,
       tweetRetweetCount,
       tweetFavoriteCount,
       tweetTexts,
-      pocketID
+      pocketTimeAdded
     } = urlObj;
 
     const faveRanking = this.normalizeVal(tweetFavoriteCount, 0, maxFaves, 0, 9);
     const retweetRanking = this.normalizeVal(tweetRetweetCount, 0, maxRetweets, 0, 9);
-    const pocketRanking = this.normalizeVal(pocketID.length, 0, maxNumPocketIDs, 0, 9);
+    const pocketRanking = this.normalizeVal(pocketTimeAdded.length, 0, maxNumPocketIDs, 0, 9);
 
     const rankingArr = [pocketRanking, retweetRanking, faveRanking];
-    console.log(rankingArr, pocketID.length, tweetRetweetCount, tweetFavoriteCount)
     let ranking = rankingArr.join('');
 
     ranking = parseFloat(ranking) * 1000;
+
+    winston.debug(`${fnName}: ${ranking}, ${rankingArr}, ${pocketTimeAdded.length}, ${tweetRetweetCount}, ${tweetFavoriteCount}, ${url}`);
 
     return ranking;
   }
