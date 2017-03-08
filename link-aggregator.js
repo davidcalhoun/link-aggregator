@@ -1227,10 +1227,13 @@ class Aggregator {
       // Filter out obviously irrelevant tweets.  After url scraping, we'll have to run this again.
       let filteredTweets = this.filterTweets(tweets, this.ignoreWords);
 
+      // Pare down list to a manageable size.
+      filteredTweets = filteredTweets.splice(0, 200);
+
       argsCopy.ignoreWords = this.ignoreWords;
 
       // Data massaging for each tweet.
-      return this.tweetsToURLs(tweets, argsCopy, done);
+      return this.tweetsToURLs(filteredTweets, argsCopy, done);
     });
   }
 
