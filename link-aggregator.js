@@ -1316,7 +1316,10 @@ class Aggregator {
   pocketToURLs(pocketAPIResponse, args, done) {
     const fnName = `${moduleName}/pocketToURLs`;
 
-    const pocketURLs = R.values(pocketAPIResponse.list);
+    let pocketURLs = R.values(pocketAPIResponse.list);
+
+    // Filter out old urls.
+    pocketURLs = this.filterStaleUrls(pocketURLs, 'time_added');
 
     winston.debug(`${pocketURLs.length} Pocket links returned before processing.`);
 
@@ -1325,9 +1328,6 @@ class Aggregator {
       if (err) winston.error(`${fnName}: err`);
 
       let urlObjsCopy = urlObjs.concat();
-
-      // Filter out old urls.
-      urlObjsCopy = this.filterStaleUrls(urlObjsCopy, 'pocketTimeAdded');
 
       return done(null, urlObjsCopy);
     });
