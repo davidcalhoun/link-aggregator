@@ -439,8 +439,8 @@ class Aggregator {
 
         //winston.debug(`${fnName}: cache hit for ${urlCopy}`);
 
-        // Reject if url is an invalid content type (pdf, jpeg, etc).
-        if (parsedReply.invalidReason) return done();
+        // Reject if url is an invalid content type (pdf, jpeg, etc) or had some error (404, etc).
+        if (parsedReply.scraperError) return done();
 
         // Follow cached redirect if needed.
         if (parsedReply.redirect) {
@@ -479,6 +479,12 @@ class Aggregator {
       // Sanity check.
       if (!response) {
         winston.error(`${fnName}: ${urlCopy} returned no response`);
+
+        // Cache result so we don't waste time processing this in the future.
+        client.set(`${redisNS}${urlCopy}`, JSON.stringify(Object.assign({}, urlDetails, {
+          scraperError: `No response`
+        })));
+
         return done(null, urlDetails);
       }
 
@@ -493,16 +499,27 @@ class Aggregator {
         winston.error(`${fnName}: ${urlCopy} is unsupported content type ${contentType}`);
 
         // Cache result so we don't waste time processing this in the future.
-        client.set(`${redisNS}${urlCopy}`, JSON.stringify({
-          invalidReason: contentType
-        }));
+        client.set(`${redisNS}${urlCopy}`, JSON.stringify(Object.assign({}, urlDetails, {
+          scraperError: contentType
+        })));
 
         return done();
       }
 
+      if (error) {
+        winston.error(`${fnName}: ${error} for ${urlCopy}`);
+        return done(null, urlDetails);
+      }
+
       // Handles bad HTTP status codes.
-      if (error || response.statusCode !== 200) {
-        winston.debug(`${fnName}: ${error} HTTP ${resp.statusCode} for ${urlCopy}`);
+      if (response.statusCode !== 200) {
+        winston.debug(`${fnName}: HTTP ${resp.statusCode} for ${urlCopy}`);
+
+        // Cache result so we don't waste time processing this in the future.
+        client.set(`${redisNS}${urlCopy}`, JSON.stringify(Object.assign({}, urlDetails, {
+          scraperError: `HTTP ${resp.statusCode}`
+        })));
+
         return done(null, urlDetails);
       }
 
@@ -743,7 +760,7 @@ class Aggregator {
         winston.error(`${fnName}: url object is null`);
         return true;
       }
-      const timestamp = url[prop];
+      const timestamp = (typeof prop === 'string') ? url[prop] : prop(url);
       const timestampArr = (Array.isArray(timestamp)) ? timestamp : [ timestamp ];
 
       const isFresh = R.any(timeMS => timeMS > cutoffTimeMS)(timestampArr)
@@ -774,7 +791,9 @@ class Aggregator {
       flattenedUrlObjects = R.reject(R.isNil, flattenedUrlObjects);
 
       // Filter out old urls.
+      winston.debug(`Twitter URLs before stale filter: ${flattenedUrlObjects.length}`);
       flattenedUrlObjects = this.filterStaleUrls(flattenedUrlObjects, 'articleTimestamp');
+      winston.debug(`Twitter URLs after stale filter: ${flattenedUrlObjects.length}`);
 
       // Filter out urls not articles (e.g. tweets themselves).
       flattenedUrlObjects = this.filterNonArticles(flattenedUrlObjects);
@@ -1098,11 +1117,19 @@ class Aggregator {
    * links.
    */
   getMaxTweetFavoriteCount(urlObjects) {
+    const fnName = `${moduleName}/getMaxTweetFavoriteCount`;
     if (urlObjects.length === 0) return 0;
 
     const sort = R.sortBy((a) => a.tweetFavoriteCount || 0);
     const urlsObjectsSorted = sort(urlObjects);
     const maxItem = urlsObjectsSorted[urlsObjectsSorted.length - 1];
+
+    if (!maxItem) {
+      winston.error(`${fnName}: maxItem is null`);
+      console.log(JSON.stringify(urlsObjectsSorted, null, 2))
+      return 0;
+    }
+
     return R.prop('tweetFavoriteCount', maxItem) || 0;
   }
 
@@ -1111,11 +1138,19 @@ class Aggregator {
    * links.
    */
   getMaxTweetRetweetCount(urlObjects) {
+    const fnName = `${moduleName}/getMaxTweetRetweetCount`;
     if (urlObjects.length === 0) return 0;
 
     const sort = R.sortBy((a) => a.tweetRetweetCount || 0);
     const urlsObjectsSorted = sort(urlObjects);
     const maxItem = urlsObjectsSorted[urlsObjectsSorted.length - 1];
+
+    if (!maxItem) {
+      winston.error(`${fnName}: maxItem is null`);
+      console.log(JSON.stringify(urlsObjectsSorted, null, 2))
+      return 0;
+    }
+
     return R.prop('tweetRetweetCount', maxItem) || 0;
   }
 
@@ -1124,11 +1159,19 @@ class Aggregator {
    * links.
    */
   getMaxTweetMentionCount(urlObjects) {
+    const fnName = `${moduleName}/getMaxTweetMentionCount`;
     if (urlObjects.length === 0) return 0;
 
     const sort = R.sortBy((a) => (a.tweetTexts && a.tweetTexts.length) || 0);
     const urlsObjectsSorted = sort(urlObjects);
     const maxItem = urlsObjectsSorted[urlsObjectsSorted.length - 1];
+
+    if (!maxItem) {
+      winston.error(`${fnName}: maxItem is null`);
+      console.log(JSON.stringify(urlsObjectsSorted, null, 2))
+      return 0;
+    }
+
     return R.path(['tweetTexts', 'length'], maxItem) || 0;
   }
 
@@ -1152,45 +1195,48 @@ class Aggregator {
     const parallelFns = [];
 
     client.get(redisIsFetchingKey, (err, reply) => {
-      if (reply === '1') {
-        winston.debug(`${fnName}: already fetching lists, so returning early.`);
+      if (reply !== '0') {
+        winston.debug(`${fnName}: already fetching lists, so returning early. ${reply}`);
         return done(null, []);
+      } else {
+        winston.debug(`${fnName}: fetching not already in progress, so ok to proceed. ${reply}`)
       }
 
-      client.set(redisIsFetchingKey, Date.now());
-
-      // Pocket
-      lists.pocket.forEach((pocketList) => {
-        // Separate call for each Pocket tag.
-        pocketList.tags.forEach((tag) => {
-          let pocketArgs = Object.assign({}, pocketList, { tag });
-          parallelFns.push((parallelCb) => this.fetchPocketList(pocketArgs, parallelCb));
+      return client.set(redisIsFetchingKey, Date.now(), () => {
+        // Pocket
+        lists.pocket.forEach((pocketList) => {
+          // Separate call for each Pocket tag.
+          pocketList.tags.forEach((tag) => {
+            let pocketArgs = Object.assign({}, pocketList, { tag });
+            parallelFns.push((parallelCb) => this.fetchPocketList(pocketArgs, parallelCb));
+          });
         });
-      });
 
-      // Twitter
-      lists.twitter.forEach((twitterList) => {
-        parallelFns.push((parallelCb) => this.fetchTwitterList(twitterList, parallelCb));
-      });
+        // Twitter
+        lists.twitter.forEach((twitterList) => {
+          parallelFns.push((parallelCb) => this.fetchTwitterList(twitterList, parallelCb));
+        });
 
-      // No-op, no lists to process.
-      if (parallelFns.length === 0) return done(null, []);
+        // No-op, no lists to process.
+        if (parallelFns.length === 0) return done(null, []);
 
-      return async.parallelLimit(parallelFns, 2, (err, urls) => {
-        // Combine all lists together.
-        let allUrls = R.flatten(urls);
+        return async.parallelLimit(parallelFns, 2, (err, urls) => {
+          // Combine all lists together.
+          let allUrls = R.flatten(urls);
 
-        // 1-10 ranking.
-        allUrls = this.rankUrls(allUrls);
+          // 1-10 ranking.
+          allUrls = this.rankUrls(allUrls);
 
-        // Remove dupes.
-        console.log(`before dupe removal: ${allUrls.length}`);
-        allUrls = R.unionWith(R.eqBy(R.prop('url')), allUrls, []);
-        console.log(`after dupe removal: ${allUrls.length}`);
+          // Remove dupes.
+          console.log(`before dupe removal: ${allUrls.length}`);
+          allUrls = R.unionWith(R.eqBy(R.prop('url')), allUrls, []);
+          console.log(`after dupe removal: ${allUrls.length}`);
 
-        client.set(redisIsFetchingKey, 0);
+          winston.debug(`${fnName}: complete!`)
+          client.set(redisIsFetchingKey, 0);
 
-        return done(null, allUrls);
+          return done(null, allUrls);
+        });
       });
     });
   }
@@ -1319,7 +1365,9 @@ class Aggregator {
     let pocketURLs = R.values(pocketAPIResponse.list);
 
     // Filter out old urls.
-    pocketURLs = this.filterStaleUrls(pocketURLs, 'time_added');
+    winston.debug(`Pocket URLs before stale filter: ${pocketURLs.length}`);
+    pocketURLs = this.filterStaleUrls(pocketURLs, (obj) => R.prop('time_added', obj) * 1000);
+    winston.debug(`Pocket URLs after stale filter: ${pocketURLs.length}`);
 
     winston.debug(`${pocketURLs.length} Pocket links returned before processing.`);
 
