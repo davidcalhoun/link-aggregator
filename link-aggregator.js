@@ -1,4 +1,4 @@
-/**
+/*
  * link-aggregator
  * Aggregates popular links from Twitter and Pocket lists, ranking and sorting based on popularity.
  * TODO: remove Codebird dependency, talk directly to Twitter API instead.
@@ -8,114 +8,96 @@ const R = require('ramda');
 const fetch = require('isomorphic-fetch');
 const Promise = require('promise-polyfill');
 const urlUtil = require('url');
+const redis = require('redis');
+const origRequest = require('request');
+const async = require('async');
+const winston = require('winston');
+const cheerio = require('cheerio');
 
+winston.level = 'debug';
+
+const client = redis.createClient();
+
+// Keep track of module name for logging purposes.
 const moduleName = 'link-aggregator';
-const isNode = !!process;
 
-// TODO fix when cert is deployed
-if (isNode && process.env.NODE_ENV !== 'production') {
-  // Running in Node
-  // Needed when proxy isn't running on HTTPS (e.g. in dev mode).
+// Namespace prefix for organizing Redis data.
+const redisNS = 'la-';
+
+const redisIsFetchingKey = `${redisNS}isCurrentlyFetching`;
+
+// Configure request.js
+const request = origRequest.defaults({
+  // Enable global cookies (some sites won't function normally without cookies)
+  jar: true,
+
+  // Request headers.
+  headers: {
+    accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'accept-language': 'en-US,en;q=0.8',
+    'cache-control': 'no-cache',
+    dnt: 1,
+    pragma: 'no-cache',
+    // This is kind of cheesy pretending to be Chrome, but unfortunately some sites completely break
+    // unless given something looking closer to a real browser.
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36'
+  }
+});
+
+const msInAWeek = 7 * 24 * 60 * 60 * 1000;
+
+// For communicating with proxy in dev mode: enables receiving data even with self-signed SSL certs.
+// TODO: look into if this is still needed.
+if (process.env.NODE_ENV !== 'production') {
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 }
 
-/*
- * Assembles URL search parameters from an object.
- * { foo: 'bar', boo: 'baz' } -> 'foo=bar&boo=baz'
+/**
+ * Public functions.
  */
-const objToFormattedURLParams = (params) => {
-  const keys = Object.keys(params);
-
-  // Sanity check; makes sure there's query params to process.
-  if (!params || keys.length === 0) return '';
-
-  // Only one param to process.
-  if (keys.length === 1) return `${keys[0]}=${params[keys[0]]}`;
-
-  // Multiple params to process.
-  return Object.keys(params).reduce((a, b) => {
-    let output = '';
-
-    if (typeof params[a] !== 'undefined') {
-      // First iteration.
-      output = `${a}=${params[a]}`;
-    } else {
-      // nth iteration.
-      output = `${a}`;
-    }
-
-    return `${output}&${b}=${encodeURIComponent(params[b])}`;
-  });
-};
-
-const removeJunkURLParams = (url) => {
-  const removeParams = [
-    // Google campaign url params.
-    // https://ga-dev-tools.appspot.com/campaign-url-builder/
-    'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
-
-    // Marketo
-    // http://docs.marketo.com/display/public/DOCS/Disable+Tracking+for+an+Email+Link
-    'mkt_tok',
-
-    // Mashable custom UTM
-    'utm_cid',
-
-    // The Guardian
-    'CMP'
-  ];
-
-  const urlParsed = urlUtil.parse(url, true);
-
-  const query = urlParsed.query;
-
-  // Remove junk params.
-  removeParams.forEach(param => delete query[param]);
-
-  const queryFormatted = objToFormattedURLParams(query);
-
-  urlParsed.search = (queryFormatted) ? `?${queryFormatted}` : '';
-
-  return urlParsed.format();
-};
-
-const findUndefinedArgs = (passedInArgs, expectedArgs) => {
-  const undefinedArgNames = [];
-
-  expectedArgs.forEach((arg) => {
-    if (typeof passedInArgs[arg] === 'undefined') undefinedArgNames.push(arg);
-  });
-
-  return undefinedArgNames;
-};
-
 class Aggregator {
   constructor() {
     // Init Codebird (helper for accessing Twitter API)
     this.codebird = new Codebird();
+
+    // Hash of all links.  Need to keep this reference here so both Twitter and Pocket can update
+    // it.
+    this.urls = {};
+
+    client.set(redisIsFetchingKey, 0);
   }
 
-  // Sets consumer key and secret for Twitter API.
+  /**
+   * Sets consumer key and secret for Twitter API.
+   */
   setTwitterConsumerKey(key, secret) {
     this.codebird.setConsumerKey(key, secret);
   }
 
-  // Sets token and secret for Twitter API.
+  /**
+   * Sets token and secret for Twitter API.
+   */
   setTwitterToken(token, secret) {
     this.codebird.setToken(token, secret);
   }
 
-  // Sets words to ignore in links (for filtering irrelevant links).
+  /**
+   * Sets words to ignore in links (for filtering irrelevant links).
+   */
   setIgnoreWords(words) {
     this.ignoreWords = words || [];
   }
 
-  // Gets words to ignore in links.
+  /**
+   * Gets words to ignore in links.
+   */
   getIgnoreWords() {
     return this.ignoreWords;
   }
 
-  // Transforms category classification config for easier lookups.
+  /**
+   * Transforms category classification config for easier lookups.
+   */
   _toCategoryPairs(categories) {
     return R.map((category) => {
       let regexp = categories[category];
@@ -134,7 +116,9 @@ class Aggregator {
     }, Object.keys(categories));
   }
 
-  // Sets categories for topic tagging.
+  /**
+   * Sets categories for topic tagging.
+   */
   setCategories(categories) {
     this.categoriesUnprocessed = categories;
 
@@ -161,43 +145,42 @@ class Aggregator {
       [];
   }
 
-  // Gets categories, for tagging link topics.
+  /**
+   * Gets categories, for tagging link topics.
+   */
   getCategories() {
     return this.categoriesUnprocessed;
   }
 
-  // Fetches links from a Twitter list.
-  // https://dev.twitter.com/rest/reference/get/lists/statuses
+  /**
+   * Fetches links from a Twitter list.
+   * https://dev.twitter.com/rest/reference/get/lists/statuses
+   */
   _asyncGetTwitterList(args, cb) {
     const argsCopy = Object.assign({}, args);
 
+    // Tests: returns a data stub immediately.
     if (argsCopy.dataStub) return cb(null, argsCopy.dataStub);
 
-    // TODO: remove, replace with arrow fns
-    const self = this;
+    let tweets = [];
 
-    let listOptions = {};
-
-    // TODO: remove this global state
-    self._tweets = [];
-
-    // Init
+    // Initialize if needed.
     if (!argsCopy.data) {
       argsCopy.data = [];
       argsCopy.iterations = 0;
     }
 
-    listOptions = {
+    const listOptions = {
       owner_screen_name: argsCopy.owner,
       slug: argsCopy.name,
-      count: argsCopy.count || 100
+      count: argsCopy.count || 110
     };
 
     // Pagination
     if ('max_id' in argsCopy) listOptions.max_id = argsCopy.max_id;
 
     // TODO: send pagination calls out in parallel instead of sequentially
-    this.codebird.__call(
+    return this.codebird.__call(
       'lists_statuses',
       listOptions,
       (reply, rate, err) => {
@@ -218,14 +201,14 @@ class Aggregator {
           // multiple times as the data comes in, which will be faster than waiting for one big
           // callback at the end.
           cb(null, reply);
-        } else if (!argsCopy.multipleCallbacks && self._tweets) {
+        } else if (!argsCopy.multipleCallbacks && tweets) {
           // Group up results into one callback;
 
           // append
-          self._tweets = self._tweets.concat(reply);
-        } else if (!argsCopy.multipleCallbacks && !self._tweets) {
+          tweets = tweets.concat(reply);
+        } else if (!argsCopy.multipleCallbacks && !tweets) {
           // init
-          self._tweets = reply;
+          tweets = reply;
         }
 
         // Reached the limit
@@ -233,7 +216,7 @@ class Aggregator {
         if (argsCopy.iterations > 4) {
           // cb already sent above
           if (argsCopy.multipleCallbacks) return null;
-          return cb(null, self._tweets);
+          return cb(null, tweets);
         }
 
         // Fetch the next page
@@ -242,12 +225,14 @@ class Aggregator {
         }
 
         argsCopy.max_id = reply[reply.length - 1].id;
-        return self._asyncGetTwitterList(argsCopy, cb);
+        return this._asyncGetTwitterList(argsCopy, cb);
       }
     );
   }
 
-  // Searches a text string for matching categories.
+  /**
+   * Searches a text string for matching categories.
+   */
   _getCategoriesFromText(text, categories) {
     let cats = [];
     const categoriesCopy = categories || [];
@@ -259,137 +244,987 @@ class Aggregator {
     return cats;
   }
 
-  // Gets tweets from a user's Twitter list.  With keyword filtering to discard irrelevant tweets.
-  twitterList(args, done) {
-    const fnName = `${moduleName}/twitterList`;
+  /**
+   * Filters out tweets missing urls, or containing words that should be ignored.
+   */
+  filterTweets(tweets, ignoreWords) {
+    const fnName = `${moduleName}/filterUrlsWithIgnoreWords`;
 
-    // TODO replace with arrow fns
-    const self = this;
+    const numBefore = tweets.length;
 
-    // Stores by link, not by tweet.
-    if (!self.twitterLinks) self.twitterLinks = {};
+    const tweetsAfter = R.reject((tweet) => {
+      // If this tweet includes a quoted or rewteeted tweet, reference the original tweet.
+      if (tweet.quoted_status) tweet = tweet.quoted_status;
+      if (tweet.retweeted_status) tweet = tweet.retweeted_status;
 
-    // TODO: pull apart this big mess.
-    self._asyncGetTwitterList(args, (err, data) => {
-      let tweets = [];
-      let ignoreMatch = false;
-      let linkArray = [];
-
-      // Sanity checks
-      if (err) {
-        return done(`${fnName} ${err}`);
-      }
-      if (data.length === 0) {
-        return done(`${fnName} No tweets - network problems?`);
+      // Discard tweets with no urls.
+      if (!tweet.entities || tweet.entities.urls.length === 0) {
+        //winston.debug(`Rejecting - no urls present in tweet: ${tweet.text}`);
+        return true;
       }
 
-      // Filter out irrelevant tweets.
-      tweets = R.reject((tweet) => {
-        // Discard tweets with no urls.
-        if (!tweet || !tweet.entities || tweet.entities.urls.length === 0) return true;
+      // Discard ignored words.  Url filtering will happen later.
+      const shouldIgnore = R.find((ignoreWord) => {
+        let txt = `@${tweet.user.screen_name}: ${tweet.text}`;
+        const matches = `${txt}`.match(new RegExp(ignoreWord, 'gi'));
 
-        // Discard ignored words.
-        ignoreMatch = R.find((ignoreWord) => {
-          let txt = `@${tweet.user.screen_name}: ${tweet.text}`;
+        if (matches) winston.debug(`Rejecting due to ignore word "${matches[0]}": ${tweet.text}`);
 
-          const urls = R.pluck('expanded_url', tweet.entities.urls);
-          const joinedUrls = urls.join(', ');
+        return matches;
+      })(ignoreWords || []);
 
-          // Append urls to text to simplify regexp logic
-          txt = `${txt} ${joinedUrls}`;
+      return shouldIgnore;
+    }, tweets);
 
-          return txt.match(new RegExp(ignoreWord, 'gi'));
-        })(self.ignoreWords || []);
+    const numRejected = numBefore - tweetsAfter.length;
 
-        return ignoreMatch;
-      }, data);
+    winston.info(`${fnName}: ${numRejected} tweet urls rejected`);
 
+    return tweetsAfter;
+  }
 
-      // Each tweet: data massaging
-      // Note: shortened urls will not be expanded here - please use another util for that!
-      R.forEach((tweet) => {
-        // Pull out links from tweet
-        const urls = R.path(['entities', 'urls'], tweet);
+  /**
+   * Filters out url objects containing words on the ignore list.
+   */
+  filterUrlsWithIgnoreWords(urls, ignoreWords) {
+    const fnName = `${moduleName}/filterUrlsWithIgnoreWords`;
 
-        // Each url
-        R.forEach((url) => {
-          const urlCopy = url.expanded_url;
-          let hashtags = [];
-          let categories = [];
+    const numUrlsBefore = urls.length;
 
-          if (!self.twitterLinks[urlCopy]) {
-            // new url, so init
-            self.twitterLinks[urlCopy] = {
-              source: 'twitter',
-              sourceDetails: `${args.owner}/${args.name}`,
-              categories: [],
-              tweetTexts: [],
-              hashtags: [],
-              media: [],  // photos, videos associated with the link
-              mentionCount: 0,
-              retweetCount: 0,
-              favoriteCount: 0,
-              firstMentionTime: (new Date(tweet.created_at)).getTime(),
-              lastMentionTime: null
-            };
-          }
+    const urlsAfter = R.reject((url) => {
+      // Discard ignored words.
+      const shouldIgnore = R.find((ignoreWord) => {
+        // Append urls to text to simplify regexp logic
+        const searchString = `${url.url} ${url.title} ${url.excerpt}`;
 
-          // TODO use R.mergeWith instead here?
+        const matches = searchString.match(new RegExp(ignoreWord, 'gi'));
 
-          if (!self.twitterLinks[urlCopy]) return;
+        if (matches) winston.debug(`Rejecting url due to ignore word "${matches[0]}": ${url.url}`);
 
-          self.twitterLinks[urlCopy].tweetTexts.push(`@${tweet.user.screen_name}: ${tweet.text}`);
-          self.twitterLinks[urlCopy].tweetTexts = R.uniq(self.twitterLinks[urlCopy].tweetTexts);
+        return matches;
+      })(ignoreWords || []);
 
-          hashtags = R.pluck('text')(tweet.entities.hashtags);
-          self.twitterLinks[urlCopy].hashtags =
-            R.uniq(self.twitterLinks[urlCopy].hashtags.concat(hashtags));
+      return shouldIgnore;
+    }, urls);
 
-          if ('media' in tweet.entities) {
-            self.twitterLinks[urlCopy].media =
-              R.uniq(self.twitterLinks[urlCopy].media.concat(tweet.entities.media));
-          }
+    const numUrlsRejected = numUrlsBefore - urlsAfter.length;
 
-          self.twitterLinks[urlCopy].mentionCount++;
-          self.twitterLinks[urlCopy].retweetCount += tweet.retweet_count;
-          self.twitterLinks[urlCopy].favoriteCount += tweet.favorite_count;
-          self.twitterLinks[urlCopy].rank = self.twitterLinks[urlCopy].favoriteCount +
-            self.twitterLinks[urlCopy].retweetCount + self.twitterLinks[urlCopy].mentionCount;
-          self.twitterLinks[urlCopy].lastMentionTime = (new Date(tweet.created_at)).getTime();
+    winston.info(`${fnName}: ${numUrlsRejected} urls with ignore words rejected after scraping, ${urlsAfter.length} remaining`);
 
-          R.forEach((subtweet) => {
-            const cats = self._getCategoriesFromText(`${subtweet}, ${urlCopy}`, self.categories);
+    return urlsAfter;
+  }
 
-            if (cats.length > 0) {
-              categories = categories.concat(cats);
-            }
-          }, self.twitterLinks[urlCopy].tweetTexts);
-          // TODO: do a category search on all urls in tweet instead of just one (url)
+  /**
+   * Merges new url info with old info, preventing duplication.
+   */
+  mergeUrls(url1, urlMeta) {
+    let mergedUrlObj = Object.assign({}, url1);
 
-          self.twitterLinks[urlCopy].categories =
-            R.uniq(self.twitterLinks[urlCopy].categories.concat(categories));
-        }, urls);
-      }, tweets);
+    // Init if necessary.
+    if (!mergedUrlObj.source) {
+      mergedUrlObj = Object.assign(mergedUrlObj, {
+        source: [],
+        sourceDetails: [],
+        categories: [],
+        tweetTexts: [],
+        tweetIDs: [],
+        tweetMentionCount: 0,
+        tweetFavoriteCount: 0,
+        tweetRetweetCount: 0,
+        tweetFirstMentionMS: 0,
+        tweetLastMentionMS: 0,
+        pocketTag: [],
+        pocketTimeAdded: [],
+        pocketID: [],
+      });
+    }
 
-      // Sort tweets according to date, then link count
+    let source, sourceDetails, categories, timestamp;
 
-      // Convert to array.
-      linkArray = R.compose(R.map(R.zipObj(['url', 'details'])), R.toPairs)(self.twitterLinks);
+    if (urlMeta.tweetObj) {
+      // Tweet handling.
 
-      // Remove nested 'details' object.
-      linkArray = R.map((link) => R.assoc('url', link.url, link.details), linkArray);
+      // Pull out metadata from the tweet.
+      const {
+        favorite_count,
+        retweet_count,
+        listOwner,
+        listName,
+        text,
+        created_at,
+        url,
+        title,
+        excerpt,
+        id_str,
+        user,
+      } = urlMeta.tweetObj;
 
-      // Sort by mentions, rewtweets, favorites all combined
-      linkArray = R.reverse(R.sortBy(R.prop('rank'))(linkArray));
+      // No-op if tweet was already processed.
+      const tweetAlreadyProcessed = mergedUrlObj.tweetIDs && (mergedUrlObj.tweetIDs.indexOf(urlMeta.tweetObj.id_str) !== -1);
+      if (tweetAlreadyProcessed) return mergedUrlObj;
 
-      return done(null, linkArray);
+      const tweetTimeMS = (new Date(created_at)).getTime();
+
+      // Init times if needed.
+      if (mergedUrlObj.source.length === 0) {
+        mergedUrlObj.tweetFirstMentionMS = tweetTimeMS;
+        mergedUrlObj.tweetLastMentionMS = tweetTimeMS;
+      }
+
+      categories = this._getCategoriesFromText(`${text} ${url} ${title} ${excerpt}`, this.categories);
+      source = 'twitter';
+      sourceDetails = `${listOwner}/${listName}`;
+      mergedUrlObj.tweetTexts = R.union(mergedUrlObj.tweetTexts, [`@${user.screen_name}: ${text}`]);
+      timestamp = mergedUrlObj.articleTimestamp || tweetTimeMS;
+      mergedUrlObj.tweetMentionCount++;
+      mergedUrlObj.tweetRetweetCount += retweet_count;
+      mergedUrlObj.tweetFavoriteCount += favorite_count;
+      mergedUrlObj.tweetIDs = R.union(mergedUrlObj.tweetIDs, [id_str]);
+
+      // TODO: update mention times
+    } else if(urlMeta.pocketObj) {
+      // Pocket url processing.
+
+      // console.log(22323, 'pocket', url1, urlMeta.pocketObj)
+
+      const {
+        title,
+        excerpt,
+        username,
+        tag,
+        time_added,
+        item_id
+      } = urlMeta.pocketObj;
+
+      const timeAddedMS = time_added * 1000;
+
+      source = 'pocket';
+      sourceDetails = username;
+      categories = this._getCategoriesFromText(`${title}, ${excerpt}`, categories);
+      timestamp = mergedUrlObj.articleTimestamp || timeAddedMS;
+      mergedUrlObj.pocketTag = R.union(mergedUrlObj.pocketTag, [ tag ]);
+      mergedUrlObj.pocketTimeAdded = R.union(mergedUrlObj.pocketTimeAdded, [ timeAddedMS ]);
+      mergedUrlObj.pocketID = R.union(mergedUrlObj.pocketID, [ item_id ]);
+    }
+
+    if (source) {
+      mergedUrlObj.source = R.union(mergedUrlObj.source, [ source ]);
+      mergedUrlObj.sourceDetails = R.union(mergedUrlObj.sourceDetails, [ sourceDetails ]);
+      mergedUrlObj.categories = R.union(mergedUrlObj.categories, categories);
+      mergedUrlObj.timestamp = timestamp;
+    }
+
+    return mergedUrlObj;
+  }
+
+  /**
+   * Scraper: Gets url excerpt and other info.  First checks catch, then fetches only on cache misses.
+   */
+  getUrlDetails(url, urlMeta, done) {
+    const fnName = `${moduleName}/getUrlDetails`;
+
+    let urlCopy = url;
+    let urlDetailsObj;
+
+    // Sanity check.
+    if (!urlCopy) return done();
+
+    // Remove marketing/tracking junk params.
+    urlCopy = this.removeJunkURLParams(urlCopy);
+
+    // Check the cache.
+    return client.get(`${redisNS}${urlCopy}`, (err, reply) => {
+      if (reply) {
+        const parsedReply = JSON.parse(reply);
+
+        //winston.debug(`${fnName}: cache hit for ${urlCopy}`);
+
+        // Reject if url is an invalid content type (pdf, jpeg, etc).
+        if (parsedReply.invalidReason) return done();
+
+        // Follow cached redirect if needed.
+        if (parsedReply.redirect) {
+          return this.getUrlDetails(`${parsedReply.redirect}`, urlMeta, done);
+        }
+
+        urlDetailsObj = this.mergeUrls(parsedReply, urlMeta);
+
+        // Update cache with merged info.
+        client.set(`${redisNS}${urlCopy}`, JSON.stringify(urlDetailsObj));
+
+        return done(null, urlDetailsObj);
+      }
+
+      // Cache miss - new url, so scrape the page.
+      //winston.debug(`${fnName}: cache miss for ${urlCopy}`);
+      return this.fetchUrlDetails(urlCopy, urlMeta, done);
     });
   }
 
-  // Gets a user's Pocket list.  No keyword filtering needed here, as Pocket is more curated
-  // already.
-  // TODO: pagination
-  getPocketList(args, done) {
+  /**
+   * Scraper: gets article excerpt and other info.
+   */
+  fetchUrlDetails(url, args, done) {
+    const fnName = `${moduleName}/fetchUrlDetails`;
+
+    let urlCopy = url;
+
+    const requestOptions = {
+      timeout: 8000
+    };
+
+    request(urlCopy, requestOptions, (error, response, body) => {
+      let urlDetails = {};
+
+      // Sanity check.
+      if (!response) {
+        winston.error(`${fnName}: ${urlCopy} returned no response`);
+        return done(null, urlDetails);
+      }
+
+      const resp = response || { headers: { } };
+      const contentType = resp.headers['content-type'];
+
+      if (!contentType) winston.debug(`No content-type found for ${urlCopy}`);
+
+      // Checks for non-HTML content (such as PDFs, etc).
+      const isUnsupportedFiletype = !contentType || !contentType.match('text/html');
+      if (isUnsupportedFiletype) {
+        winston.error(`${fnName}: ${urlCopy} is unsupported content type ${contentType}`);
+
+        // Cache result so we don't waste time processing this in the future.
+        client.set(`${redisNS}${urlCopy}`, JSON.stringify({
+          invalidReason: contentType
+        }));
+
+        return done();
+      }
+
+      // Handles bad HTTP status codes.
+      if (error || response.statusCode !== 200) {
+        winston.error(`${fnName}: ${urlCopy} ${error} HTTP ${resp.statusCode}`);
+        return done(null, urlDetails);
+      }
+
+      // Handle URL redirects.
+      const newUrl = response.request.uri.href;
+      const wasRedirected = urlCopy !== newUrl;
+      urlCopy = this.removeJunkURLParams(newUrl);
+
+      if (wasRedirected) {
+        winston.debug(`${fnName}: redirect, so rewriting ${url} to ${urlCopy}`);
+
+        // Cache redirect info, so this URL won't need to be fetched again.
+        client.set(`${redisNS}${url}`, JSON.stringify({
+          redirect: urlCopy
+        }));
+      }
+
+      urlDetails.url = urlCopy;
+
+      // Load HTML body into Cherrio for HTML parsing.
+      const $ = cheerio.load(body);
+
+      // Wrap in try-catch for large pages that may fail (needed due to bug in domutils).
+      // See http://bit.ly/2iTvQNS
+      try {
+        //winston.debug(`${fnName}: parsing HTML`);
+
+        // Get page title.
+        urlDetails.title = this.getPageTitle($);
+
+        // Get page excerpt.
+        urlDetails.excerpt = this.getPageExcerpt.call(this, $);
+
+        urlDetails.articleTwitterAuthor = this.getTwitterAuthor($);
+
+        urlDetails.articleTimestamp = this.getPublishedTime($);
+      } catch (e) {
+        winston.error(`${fnName}: Failed to parse ${urlCopy}: ${e.message} ${e.stack}`);
+      }
+
+      // Add in relevant tweet/Pocket info.
+      urlDetails = this.mergeUrls(urlDetails, args);
+
+      // TODO: pocket merge
+
+      // TODO: remove, use redis.setObj instead
+      const urlDetailsStr = JSON.stringify(urlDetails);
+
+      //winston.debug(`${fnName}: ${urlCopy} details: ${urlDetailsStr}`);
+
+      // update cache
+      client.set(`${redisNS}${urlCopy}`, urlDetailsStr);
+
+      this.uniqueLPUSH(`${redisNS}urls`, urlCopy);
+
+      done(null, urlDetails);
+    });
+  };
+
+  uniqueLPUSH(key, val, cb) {
+    const fnName = `${moduleName}/uniqueLPUSH`;
+
+    cb = cb || (() => {});
+
+    const placeholderVal = '__tempForUniquePush';
+    const beforeOrAfterPivot = 'BEFORE';
+
+    // Try to insert placeholder before the value, if it aleady exists.
+    return client.linsert(key, beforeOrAfterPivot, val, placeholderVal, (err, linsertReply) => {
+      if (err) winston.error(`${fnName}: err`);
+
+      const keyNotFound = linsertReply === -1;
+      const listEmpty = linsertReply === 0;
+      if (keyNotFound || listEmpty) {
+        // Key doesn't exist in list yet, so push it.
+        client.lpush(key, val, (err, pushReply) => {
+          if (err) winston.error(`${fnName}: err`);
+
+          // Cleanup placeholder.
+          return client.lrem(key, 0, placeholderVal, cb);
+        });
+      } else {
+        // Cleanup placeholder.
+        return client.lrem(key, 0, placeholderVal, cb);
+      }
+    });
+  }
+
+  /**
+   * Scraper: gets time an article was published.
+   */
+  getPublishedTime($) {
+    let time;
+
+    // Search for Open Graph published_time.
+    const publishedTag = $('meta[property="article:published_time"]');
+    time = publishedTag.attr('content');
+
+    // Schema.org
+    if (!time) {
+      const datePublishedTag = $('meta[itemprop=datePublished]');
+      time = datePublishedTag.attr('content');
+    }
+
+    // Search for a <time> tag.
+    if (!time) {
+      const timeTag = $('[datetime]');
+      time = timeTag.attr('datetime');
+    }
+
+    // Last ditch effort: look for classname containing "datetime".
+    if (!time) {
+      const tag = $('[class*=datetime]');
+      time = tag.text();
+    }
+
+    // Convert to timestamp.
+    if (time) {
+      time = (new Date(time)).getTime();
+    }
+
+    return time || 0;
+  }
+
+  /**
+   * Scraper: gets the Twittle handle of the article author.  Note: often this turns out to be the
+   * platform's Twitter handle instead of the actual author (e.g. "@wallstreetjournal instead of
+   * @joeschmoe").
+   */
+  getTwitterAuthor($) {
+    let author;
+
+    const twitterCreatorTag = $('meta[name="twitter:creator"]');
+    author = twitterCreatorTag.attr('content');
+
+    if (!author) {
+      const twitterSiteTag = $('meta[name="twitter:site"]');
+      author = twitterSiteTag.attr('content');
+    }
+
+    return author || '';
+  }
+
+  /**
+   * Scraper: gets the title of the article.
+   */
+  getPageTitle($) {
+    let title;
+
+    const ogTitleTag = $('meta[property="og:title"]');
+    title = ogTitleTag.attr('content');
+
+    if (!title) {
+      const titleTag = $('title');
+      title = titleTag.text().trim();
+    }
+
+    return title || '';
+  }
+
+  /**
+   * Scraper: gets an excerpt from the beginning of an article.
+   */
+  getPageExcerpt($) {
+    let excerpt = '';
+
+    // Check for Open Graph description.
+    const ogDescriptionTag = $('meta[property="og:description"]');
+    excerpt = ogDescriptionTag.attr('content');
+
+    // Check for Twitter description.
+    if (!excerpt) {
+      const twitterDescriptionTag = $('meta[name="twitter:description"]');
+      excerpt = twitterDescriptionTag.attr('content');;
+    }
+
+    // Check for regular meta description tag.
+    if (!excerpt) {
+      const metaDescriptionTag = $('meta[name="description"]');
+      excerpt = metaDescriptionTag.attr('content');
+    }
+
+    // Fallback to scraping the first paragraph.
+    if (!excerpt) {
+      // Find the first paragraph containing more than 20 words, then use that as an excerpt.
+      // Note: don't use fat arrow here because 'this' context needs to NOT be outer closure
+      // context.
+      const paragraphs = $('p');
+      paragraphs.each(function processParagraph() {
+        // TODO: DON'T traverse ALL ps
+        if (!excerpt && $(this).text().split(/\s+/).length > 20) {
+          excerpt = $(this).text();
+        }
+      });
+    }
+
+    if (!excerpt) return '';
+
+    // Trim excerpt.
+    const maxLength = 200;
+    excerpt = excerpt.split(' ').reduce((a, b) => {return (a.length > maxLength) ? a : `${a} ${b}`});
+
+    return excerpt;
+  }
+
+  /**
+   * Filters out non-articles (e.g. links to other tweets).
+   */
+  filterNonArticles(urlObjects) {
+    const fnName = `${moduleName}/filterNonArticles`;
+
+    const numUrlsBefore = urlObjects.length;
+    const isNonArticle = (urlObj) => {
+      if(!urlObj.url) winston.debug(`missing url`, urlObj);
+      return urlObj.url && urlObj.url.match('twitter.com');
+    }
+    const flattenedUrlObjects = R.reject(isNonArticle, urlObjects);
+    const numUrlsRejected = numUrlsBefore - flattenedUrlObjects.length;
+    winston.debug(`${fnName}: discarded ${numUrlsRejected} non-article urls (tweets only)`);
+
+    return flattenedUrlObjects;
+  }
+
+  /**
+   * Filters out old articles.
+   * TODO: merge with filterOldUrls
+   */
+
+  filterStaleUrls(urlObjects, prop = 'timestamp', expiry = msInAWeek) {
+    const fnName = `${moduleName}/filterStaleUrls`;
+
+    const numUrlsBefore = urlObjects.length;
+
+    const cutoffTimeMS = Date.now() - expiry;
+    
+    const isURLStale = (url) => {
+      const timestamp = url[prop];
+      const timestampArr = (Array.isArray(timestamp)) ? timestamp : [ timestamp ];
+
+      const isFresh = R.any(timeMS => timeMS > cutoffTimeMS)(timestampArr)
+      return !isFresh;
+    }
+    const flattenedUrlObjects = R.reject(isURLStale, urlObjects);
+    const numUrlsRejected = numUrlsBefore - flattenedUrlObjects.length;
+    winston.debug(`${fnName}: discarded ${numUrlsRejected} stale urls`);
+
+    return flattenedUrlObjects;
+  }
+
+  /**
+   * Pulls out urls from each tweet.
+   */
+  tweetsToURLs(tweets, args, done) {
+    const fnName = `${moduleName}/tweetsToURLs`;
+
+    winston.debug(`${fnName}: processing ${tweets.length} tweets...`);
+
+    const parallelFns = R.map((tweet) => ((parallelCb) => this.tweetToURLs(tweet, args, parallelCb)), tweets);
+    async.parallelLimit(parallelFns, 5, (err, reply) => {
+      //winston.debug(`${fnName} parallelLimit reply:`, reply);
+
+      let flattenedUrlObjects = R.flatten(reply);
+
+      // Remove rejected urls.
+      flattenedUrlObjects = R.reject(R.isNil, flattenedUrlObjects);
+
+      // Filter out old urls.
+      flattenedUrlObjects = this.filterStaleUrls(flattenedUrlObjects, 'articleTimestamp');
+
+      // Filter out urls not articles (e.g. tweets themselves).
+      flattenedUrlObjects = this.filterNonArticles(flattenedUrlObjects);
+
+      // Filter out ignore words/websites.
+      flattenedUrlObjects = this.filterUrlsWithIgnoreWords(flattenedUrlObjects, args.ignoreWords);
+
+      return done(err, flattenedUrlObjects);
+    });
+  }
+
+  /*
+   * Pulls out urls from tweets, and scrapes each individual url.
+   */
+  tweetToURLs(tweet, args, done) {
+    const fnName = `${moduleName}/tweetToURL`;
+
+    // Make a copy of the tweet.
+    let tweetObj = Object.assign({}, tweet);
+
+    // If this tweet includes a quoted tweet, reference the original quoted tweet instead.
+    if (tweetObj.quoted_status) tweetObj = tweetObj.quoted_status;
+    if (tweetObj.retweeted_status) tweetObj = tweetObj.retweeted_status;
+
+    // Add Twitter list owner and name to tweet object.
+    tweetObj.listOwner = args.owner;
+    tweetObj.listName = args.name;
+
+    // Find each url in tweet, and treat it individually.
+    const urlObjs = R.path(['entities', 'urls'], tweetObj);
+    const tweetURLs = R.pluck('expanded_url')(urlObjs);
+
+    // Create parallel async functions for each URL present.
+    const parallelFns = [];
+    R.forEach((url) => {
+      parallelFns.push((parallelCb) => {
+        // Get scraped info for this url.
+        this.getUrlDetails(url, { tweetObj }, (err, urlDetailsObj) => {
+          // Return early if url was rejected.
+          if (!urlDetailsObj) return parallelCb();
+
+          return parallelCb(null, urlDetailsObj);
+        });
+      });
+    }, tweetURLs);
+
+    async.parallelLimit(parallelFns, 5, done);
+  }
+
+  /*
+   * Assembles URL search parameters from an object.
+   * { foo: 'bar', boo: 'baz' } -> 'foo=bar&boo=baz'
+   */
+  objToFormattedURLParams(params) {
+    const keys = Object.keys(params);
+
+    // Sanity check; makes sure there's query params to process.
+    if (!params || keys.length === 0) return '';
+
+    // Only one param to process.
+    if (keys.length === 1) return `${keys[0]}=${params[keys[0]]}`;
+
+    // Multiple params to process.
+    return Object.keys(params).reduce((a, b) => {
+      let output = '';
+
+      if (typeof params[a] !== 'undefined') {
+        // First iteration.
+        output = `${a}=${params[a]}`;
+      } else {
+        // nth iteration.
+        output = `${a}`;
+      }
+
+      return `${output}&${b}=${encodeURIComponent(params[b])}`;
+    });
+  }
+
+  /*
+   * Removes query params from a url.  These params are often used for campaign tracking.
+   * TODO: url transforms for login redirects, e.g.
+   * https://myaccount.nytimes.com/auth/login?URI=https://www.nytimes.com/2017/01/01/technology/google-amp-mobile-publishing.html?_r=0
+   */
+  removeJunkURLParams(url) {
+    const removeParams = [
+      // Google campaign url params.
+      // https://ga-dev-tools.appspot.com/campaign-url-builder/
+      'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'utm_cid',
+
+      // Marketo
+      // http://docs.marketo.com/display/public/DOCS/Disable+Tracking+for+an+Email+Link
+      'mkt_tok',
+
+      // Mashable custom UTM
+      'utm_cid',
+
+      // The Guardian
+      'CMP',
+
+      // Oreilly
+      'cmp',
+
+      // Simple Reach (implemented on Techcrunch, etc)
+      'sr_share',
+
+      // NY Times, Vulture, etc.
+      'smprod', 'smid', 'mid', 'smtyp', 'smvar', 'mwrsm', 'rref', 'abt', 'abg',
+
+      // Medium
+      'gi',
+
+      // Bloomberg, etc
+      'cmpid',
+
+      // LinkedIn
+      'trk', 'trkInfo',
+
+      // Forbes
+      'refURL',
+
+      // Yahoo News
+      'soc_trk', 'soc_src',
+
+      // New Yorker, etc
+      'mbid',
+
+      // YouTube
+      'feature',
+
+      // Webtrends
+      'WT.mc_id',
+
+      {
+        domain: ['www.nytimes.com', 'myaccount.nytimes.com'],
+        params: ['_r']
+      },
+
+      {
+        domain: 'meetup.com',
+        params: ['a']
+      },
+
+      {
+        domain: 'www.youtube.com',
+        params: ['feature']
+      },
+
+      // Misc
+      'source', 'ref', 'idg_eid', 's_subsrc', 'referer', 'referrer', 'xid', 'sp_ref', 'src', 'tid',
+      'postshare', 'extid', 'imm_mid',
+    ];
+
+    const urlParsed = urlUtil.parse(url, true);
+    const query = urlParsed.query;
+
+    // Remove junk params.
+    removeParams.forEach((param) => {
+      if (typeof param === 'string') {
+        delete query[param];
+      } else if(typeof param === 'object') {
+        const hostname = (typeof urlParsed.hostname === 'string') ?
+          [ urlParsed.hostname ] :
+          urlParsed.hostname;
+
+        // Domain-specific param removal.
+        const domainMatches = hostname.indexOf(param.domain) !== -1;
+        if (domainMatches) {
+          param.params.forEach(param2 => delete query[param2]);
+        }
+      }
+    });
+
+    const queryFormatted = this.objToFormattedURLParams(query);
+
+    urlParsed.search = (queryFormatted) ? `?${queryFormatted}` : '';
+
+    return urlParsed.format();
+  }
+
+  /*
+   * Helper to utility to track down any required arguments passed to a function that are undefined.
+   */
+  findUndefinedArgs(passedInArgs, requiredArgs) {
+    const undefinedArgNames = [];
+
+    requiredArgs.forEach((arg) => {
+      if (typeof passedInArgs[arg] === 'undefined') undefinedArgNames.push(arg);
+    });
+
+    return undefinedArgNames;
+  }
+
+  /**
+   * Assigns a rank (1-10) to each url, with 10 being the best.
+   */
+  rankUrls(urlObjects) {
+    let rankedUrls = [];
+
+    const maxFaves = this.getMaxTweetFavoriteCount(urlObjects);
+    const maxRetweets = this.getMaxTweetRetweetCount(urlObjects);
+    const maxMentions = this.getMaxTweetMentionCount(urlObjects);
+    const maxNumPocketIDs = this.getMaxNumPocketIDs(urlObjects);
+
+    console.log(JSON.stringify(urlObjects, null, 2))
+
+    urlObjects.forEach((urlObj) => {
+      const urlObjCopy = Object.assign({}, urlObj);
+
+      // Ignore urls thrown out by a previous filter.
+      if (!urlObjCopy.url) return;
+
+      // Find all occurances of this url.
+      // const occuranceObjs = R.filter((a) => a.url === urlObjCopy.url, urlsCopy);
+
+      // if(occuranceObjs.length > 1) {
+      //   // Multiple occurances, so merge.
+      //   const uniqueOccurances = R.uniqBy((a) => {
+      //     return {tweetIDs: a.tweetIDs, source: a.source}
+      //   }, occuranceObjs);
+      // } else {
+
+      // }
+
+      urlObjCopy.rank = this.getURLRank(urlObjCopy, {
+        maxFaves,
+        maxRetweets,
+        maxMentions,
+        maxNumPocketIDs
+      });
+
+      rankedUrls.push(urlObjCopy);
+    });
+
+    rankedUrls = this.normalizeRanks(rankedUrls);
+
+    return rankedUrls;
+  }
+
+  /**
+   * Sorts, normalizes rank distributions, and converts to 1-10 scale.
+   */
+  normalizeRanks(urlObjs) {
+    let urlsCopy = urlObjs.concat();
+
+    // Sort by rank.
+    urlsCopy = R.sortWith([R.descend(R.prop('rank'))])(urlsCopy);
+
+    // Figure out size of each 10% segment.
+    const segmentSize = Math.ceil(urlsCopy.length / 10);
+    const segments = [];
+    for(let a=1, len=10; a<=len; a++) {
+      let segmentVal = R.path([a, 'rank'], urlsCopy);
+      segments.push(segmentVal);
+    }
+
+    urlsCopy = urlsCopy.map((urlObj) => {
+      let rank = this.getSegmentPosition(urlObj.rank, segments);
+      return Object.assign({}, urlObj, { rank });
+    });
+
+    return urlsCopy;
+  }
+
+  /**
+   * Returns the closest index for a rank within a group of rank segments (for ranking).
+   * E.g. rank: 3, segments: [1,3,10] will return index 1
+   */
+  getSegmentPosition(rank, segments) {
+    const segmentsSorted = R.sort(R.gt, segments);
+
+    for(let a=0, len=segmentsSorted.length; a<len; a++) {
+      if(rank > segmentsSorted[a]) {
+        continue;
+      } else {
+        return a + 1;
+      }
+    }
+
+    return 10;
+  }
+
+  /**
+   * Determines the ranking of a url based on its presence on Twitter/Pocket lists, and number
+   * of times it's been faved/retweeted.
+   * TODO: trusted sources ranking
+   */
+  getURLRank(urlObj, args) {
+    const {
+      maxFaves,
+      maxRetweets,
+      maxMentions,
+      maxNumPocketIDs
+    } = args;
+
+    const {
+      tweetRetweetCount,
+      tweetFavoriteCount,
+      tweetTexts,
+      pocketID
+    } = urlObj;
+
+    const faveRanking = this.normalizeVal(tweetFavoriteCount, 0, maxFaves, 0, 9);
+    const retweetRanking = this.normalizeVal(tweetRetweetCount, 0, maxRetweets, 0, 9);
+    const pocketRanking = this.normalizeVal(pocketID.length, 0, maxNumPocketIDs, 0, 9);
+
+    const rankingArr = [pocketRanking, retweetRanking, faveRanking];
+    console.log(rankingArr, pocketID.length, tweetRetweetCount, tweetFavoriteCount)
+    let ranking = rankingArr.join('');
+
+    ranking = parseFloat(ranking) * 1000;
+
+    return ranking;
+  }
+
+  normalizeVal(val, min, max, newMin, newMax) {
+    const percentage = (val - min) / (max - min);
+
+    return newMin + ((newMax - newMin) * percentage);
+  }
+
+  /**
+   * Determines the largest number of Tweet favorites.  Needed for relative ranking of Twitter
+   * links.
+   */
+  getMaxTweetFavoriteCount(urlObjects) {
+    if (urlObjects.length === 0) return 0;
+
+    const sort = R.sortBy((a) => a.tweetFavoriteCount || 0);
+    const urlsObjectsSorted = sort(urlObjects);
+    const maxItem = urlsObjectsSorted[urlsObjectsSorted.length - 1];
+    return R.prop('tweetFavoriteCount', maxItem) || 0;
+  }
+
+  /**
+   * Determines the largest number of Tweet retweets.  Needed for relative ranking of Twitter
+   * links.
+   */
+  getMaxTweetRetweetCount(urlObjects) {
+    if (urlObjects.length === 0) return 0;
+
+    const sort = R.sortBy((a) => a.tweetRetweetCount || 0);
+    const urlsObjectsSorted = sort(urlObjects);
+    const maxItem = urlsObjectsSorted[urlsObjectsSorted.length - 1];
+    return R.prop('tweetRetweetCount', maxItem) || 0;
+  }
+
+  /**
+   * Determines the largest number of Tweet mentions.  Needed for relative ranking of Twitter
+   * links.
+   */
+  getMaxTweetMentionCount(urlObjects) {
+    if (urlObjects.length === 0) return 0;
+
+    const sort = R.sortBy((a) => (a.tweetTexts && a.tweetTexts.length) || 0);
+    const urlsObjectsSorted = sort(urlObjects);
+    const maxItem = urlsObjectsSorted[urlsObjectsSorted.length - 1];
+    return R.path(['tweetTexts', 'length'], maxItem) || 0;
+  }
+
+  /**
+   * Determines the largest number of Pocket mentions.
+   */
+  getMaxNumPocketIDs(urlObjects) {
+    if (urlObjects.length === 0) return 0;
+
+    const sort = R.sortBy((a) => (a.pocketID && a.pocketID.length) || 0);
+    const urlsObjectsSorted = sort(urlObjects);
+    const maxItem = urlsObjectsSorted[urlsObjectsSorted.length - 1];
+    return R.path(['pocketID', 'length'], maxItem) || 0;
+  }
+
+  /**
+   * Fetches Pocket and Twitter urls lists.
+   */
+  fetchLists(lists, done) {
+    const fnName = `${moduleName}/fetchLists`;
+    const parallelFns = [];
+
+    client.get(redisIsFetchingKey, (err, reply) => {
+      if (reply === '1') {
+        winston.debug(`${fnName}: already fetching lists, so returning early.`);
+        return done(null, []);
+      }
+
+      client.set(redisIsFetchingKey, Date.now());
+
+      // Pocket
+      lists.pocket.forEach((pocketList) => {
+        // Separate call for each Pocket tag.
+        pocketList.tags.forEach((tag) => {
+          let pocketArgs = Object.assign({}, pocketList, { tag });
+          parallelFns.push((parallelCb) => this.fetchPocketList(pocketArgs, parallelCb));
+        });
+      });
+
+      // Twitter
+      lists.twitter.forEach((twitterList) => {
+        parallelFns.push((parallelCb) => this.fetchTwitterList(twitterList, parallelCb));
+      });
+
+      // No-op, no lists to process.
+      if (parallelFns.length === 0) return done(null, []);
+
+      return async.parallelLimit(parallelFns, 2, (err, urls) => {
+        // Combine all lists together.
+        let allUrls = R.flatten(urls);
+
+        // 1-10 ranking.
+        allUrls = this.rankUrls(allUrls);
+
+        // Remove dupes.
+        console.log(`before dupe removal: ${allUrls.length}`);
+        allUrls = R.unionWith(R.eqBy(R.prop('url')), allUrls, []);
+        console.log(`after dupe removal: ${allUrls.length}`);
+
+        client.set(redisIsFetchingKey, 0);
+
+        return done(null, allUrls);
+      });
+    });
+  }
+
+  /*
+   * Gets tweets from a user's Twitter list.  With keyword filtering to discard irrelevant tweets.
+   */
+  fetchTwitterList(args, done) {
+    const fnName = `${moduleName}/twitterList`;
+
+    const argsCopy = Object.assign({}, args);
+
+    this._asyncGetTwitterList(args, (err, tweets) => {
+      // Sanity checks
+      if (err) return done(`${fnName} ${err}`);
+      if (tweets.length === 0) return done(`${fnName} No tweets - network problems?`);
+
+      winston.debug(`${tweets.length} tweets returned before processing.`);
+
+      // Filter out obviously irrelevant tweets.  After url scraping, we'll have to run this again.
+      let filteredTweets = this.filterTweets(tweets, this.ignoreWords);
+
+      argsCopy.ignoreWords = this.ignoreWords;
+
+      // Data massaging for each tweet.
+      return this.tweetsToURLs(tweets, argsCopy, done);
+    });
+  }
+
+  /*
+   * Gets a user's Pocket list.  No keyword filtering needed here, as Pocket is more curated
+   * already.
+   * TODO: pagination
+   * TODO: replace fetch and Promises
+   */
+  fetchPocketList(args, done) {
     const fnName = `${moduleName}/getPocketList`;
     done = done || (() => {});
 
@@ -399,7 +1234,7 @@ class Aggregator {
     const tag = argsCopy.tag || '';
 
     // Sanity checks.
-    const argsNotPresent = findUndefinedArgs(args, ['consumerKey', 'accessToken', 'apiUrl']);
+    const argsNotPresent = this.findUndefinedArgs(args, ['consumerKey', 'accessToken', 'apiUrl']);
 
     if (argsNotPresent.length > 0) {
       const argsNotPresentStr = argsNotPresent.join(', ');
@@ -431,14 +1266,6 @@ class Aggregator {
       }
 
       return response.json();
-    })
-    .then(json => {
-      return self._formatPocketList({
-        list: json.list,
-        tag,
-        username,
-        categories: self.categories
-      });
     });
 
     // TODO: make timeout configurable.
@@ -450,42 +1277,55 @@ class Aggregator {
       fetchPocket,
       timeout
     ])
-    .then((val) => done(null, val))
+    .then((pocketAPIResponse) => {
+      return this.pocketToURLs(pocketAPIResponse, {
+        tag,
+        username
+      }, done);
+    })
     .catch(error => done(`link-aggregator/getPocketList ${error.message}`));
   }
 
-  // Data massages pocket link objects into our standard format.
-  _formatPocketList(args) {
-    let output = [];
+  /**
+   * Converts a raw Pocket object into a formatted URL object.
+   */
+  pocketToURL(pocketUrlObj, args, done) {
+    const fnName = `${moduleName}/pocketToURL`;
 
-    const {
-      list,
-      tag,
-      username,
-      categories
-    } = args;
+    const urlDetailsArgs = {
+      pocketObj: Object.assign({}, pocketUrlObj, args)
+    };
 
-    // Convert object to array
-    output = R.values(list);
+    // Get scraped info for this url.
+    return this.getUrlDetails(pocketUrlObj.resolved_url, urlDetailsArgs, (err, urlDetailsObj) => {
+      // Return early if url was rejected.
+      if (!urlDetailsObj) return done();
 
-    // Only pull out the data we care about
-    output = R.map((listItem) => ({
-      source: 'pocket',
-      sourceDetails: username,
-      tag,
-      url: listItem.resolved_url,
-      title: listItem.resolved_title,
-      time_added: listItem.time_added * 1000,
-      id: listItem.item_id, // Pocket ID
-      excerpt: listItem.excerpt,
-      categories: this._getCategoriesFromText(`${listItem.resolved_title}, ${listItem.excerpt}`,
-        categories)
-    }), output);
+      return done(null, urlDetailsObj);
+    });
+  }
 
-    // Sort by time_added, newest on top
-    output = R.reverse(R.sortBy(R.prop('time_added'))(output));
+  /**
+   * Converts raw Pocket objects into formatted URL objects.
+   */
+  pocketToURLs(pocketAPIResponse, args, done) {
+    const fnName = `${moduleName}/pocketToURLs`;
 
-    return output;
+    const pocketURLs = R.values(pocketAPIResponse.list);
+
+    winston.debug(`${pocketURLs.length} Pocket links returned before processing.`);
+
+    const parallelFns = pocketURLs.map((obj) => (parallelCb) => this.pocketToURL(obj, args, parallelCb));
+    return async.parallelLimit(parallelFns, 5, (err, urlObjs) => {
+      if (err) winston.error(`${fnName}: err`);
+
+      let urlObjsCopy = urlObjs.concat();
+
+      // Filter out old urls.
+      urlObjsCopy = this.filterStaleUrls(urlObjsCopy, 'pocketTimeAdded');
+
+      return done(null, urlObjsCopy);
+    });
   }
 }
 

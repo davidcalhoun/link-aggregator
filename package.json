@@ -21,10 +21,15 @@
     "mocha": "^3.1.0"
   },
   "dependencies": {
+    "async": "^2.1.5",
+    "cheerio": "^0.22.0",
     "codebird": "^2.6.0",
     "isomorphic-fetch": "^2.2.1",
     "promise-polyfill": "^6.0.2",
-    "ramda": "^0.22.1",
+    "ramda": "^0.23.0",
+    "redis": "^2.6.5",
+    "request": "^2.79.0",
+    "winston": "^2.3.1",
     "xmlhttprequest": "^1.8.0"
   }
 }
