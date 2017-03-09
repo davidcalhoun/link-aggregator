@@ -234,6 +234,8 @@ class Aggregator {
    * Searches a text string for matching categories.
    */
   _getCategoriesFromText(text, categories) {
+    const fnName = `${moduleName}/_getCategoriesFromText`;
+
     let cats = [];
     const categoriesCopy = categories || [];
 
@@ -371,9 +373,9 @@ class Aggregator {
         mergedUrlObj.tweetLastMentionMS = tweetTimeMS;
       }
 
-      categories = this._getCategoriesFromText(`${text} ${url} ${title} ${excerpt}`, this.categories);
       source = 'twitter';
       sourceDetails = `${listOwner}/${listName}`;
+      categories = this._getCategoriesFromText(`${text} ${url} ${title} ${excerpt}`, this.categories);
       mergedUrlObj.tweetTexts = R.union(mergedUrlObj.tweetTexts, [`@${user.screen_name}: ${text}`]);
       timestamp = mergedUrlObj.articleTimestamp || tweetTimeMS;
       mergedUrlObj.tweetMentionCount++;
@@ -388,6 +390,7 @@ class Aggregator {
       // console.log(22323, 'pocket', url1, urlMeta.pocketObj)
 
       const {
+        url,
         title,
         excerpt,
         username,
@@ -400,7 +403,7 @@ class Aggregator {
 
       source = 'pocket';
       sourceDetails = username;
-      categories = this._getCategoriesFromText(`${title}, ${excerpt}`, categories);
+      categories = this._getCategoriesFromText(`${title}, ${url}, ${excerpt}`, this.categories);
       timestamp = mergedUrlObj.articleTimestamp || timeAddedMS;
       mergedUrlObj.pocketTag = R.union(mergedUrlObj.pocketTag, [ tag ]);
       mergedUrlObj.pocketTimeAdded = R.union(mergedUrlObj.pocketTimeAdded, [ timeAddedMS ]);
