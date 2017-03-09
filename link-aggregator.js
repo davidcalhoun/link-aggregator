@@ -1073,11 +1073,13 @@ class Aggregator {
   getSegmentPosition(rank, segments) {
     const segmentsSorted = R.sort(R.gt, segments);
 
-    for(let a=0, len=segmentsSorted.length; a<len; a++) {
+    segmentsSorted.push(null);
+
+    for(let a=1, len=segmentsSorted.length - 1; a<len; a++) {
       if(rank >= segmentsSorted[a]) {
         continue;
       } else {
-        return a + 1;
+        return a;
       }
     }
 
