@@ -1076,9 +1076,7 @@ class Aggregator {
 
     let position = -1;
 
-    segmentsSorted.push(null);
-
-    for(let a=1, len=segmentsSorted.length - 1; a<len; a++) {
+    for(let a=0, len=segmentsSorted.length; a<len; a++) {
       if(rank >= segmentsSorted[a]) {
         continue;
       } else {
@@ -1088,10 +1086,12 @@ class Aggregator {
     }
 
     if(position == -1) {
-      position = 10;
+      position = 9;
     }
 
-    winston.debug(`${fnName}: ${rank} -> ${position}`);
+    position++;
+
+    console.log(`${fnName}: ${rank} -> ${position}`);
 
     return position;
   }
