@@ -1037,7 +1037,10 @@ class Aggregator {
     let urlsCopy = urlObjs.concat();
 
     // Sort by rank.
-    urlsCopy = R.sortWith([R.descend(R.prop('rank'))])(urlsCopy);
+    urlsCopy = R.sortWith([
+      R.descend(R.prop('rank')),
+      R.descend(R.prop('timestamp'))
+    ])(urlsCopy);
 
     // Figure out size of each 10% segment.
     let urlsCopyRanks = R.pluck('rank')(urlsCopy);
