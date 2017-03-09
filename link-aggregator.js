@@ -1087,7 +1087,7 @@ class Aggregator {
       }
     }
 
-    if(position = -1) {
+    if(position == -1) {
       position = 10;
     }
 
