@@ -995,7 +995,7 @@ class Aggregator {
     const maxFaves = this.getMaxTweetFavoriteCount(urlObjects);
     const maxRetweets = this.getMaxTweetRetweetCount(urlObjects);
     const maxMentions = this.getMaxTweetMentionCount(urlObjects);
-    const maxNumPocketIDs = this.getMaxNumPocketIDs(urlObjects);
+    const maxNumPocketMentions = this.getMaxNumPocketMentions(urlObjects);
 
     urlObjects.forEach((urlObj) => {
       const urlObjCopy = Object.assign({}, urlObj);
@@ -1019,7 +1019,7 @@ class Aggregator {
         maxFaves,
         maxRetweets,
         maxMentions,
-        maxNumPocketIDs
+        maxNumPocketMentions
       });
 
       rankedUrls.push(urlObjCopy);
@@ -1054,7 +1054,10 @@ class Aggregator {
 
     urlsCopy = urlsCopy.map((urlObj) => {
       let rank = this.getSegmentPosition(urlObj.rank, segments);
-      return Object.assign({}, urlObj, { rank });
+      return Object.assign({}, urlObj, {
+        rank,
+        rankRaw: urlObj.rank
+      });
     });
 
     return urlsCopy;
@@ -1090,7 +1093,7 @@ class Aggregator {
       maxFaves,
       maxRetweets,
       maxMentions,
-      maxNumPocketIDs
+      maxNumPocketMentions
     } = args;
 
     const {
@@ -1103,7 +1106,7 @@ class Aggregator {
 
     const faveRanking = this.normalizeVal(tweetFavoriteCount, 0, maxFaves, 0, 9);
     const retweetRanking = this.normalizeVal(tweetRetweetCount, 0, maxRetweets, 0, 9);
-    const pocketRanking = this.normalizeVal(pocketTimeAdded.length, 0, maxNumPocketIDs, 0, 9);
+    const pocketRanking = this.normalizeVal(pocketTimeAdded.length, 0, maxNumPocketMentions, 0, 9);
 
     const rankingArr = [pocketRanking, retweetRanking, faveRanking];
     let ranking = rankingArr.join('');
@@ -1187,13 +1190,13 @@ class Aggregator {
   /**
    * Determines the largest number of Pocket mentions.
    */
-  getMaxNumPocketIDs(urlObjects) {
+  getMaxNumPocketMentions(urlObjects) {
     if (urlObjects.length === 0) return 0;
 
     const sort = R.sortBy((a) => (a.pocketID && a.pocketID.length) || 0);
     const urlsObjectsSorted = sort(urlObjects);
     const maxItem = urlsObjectsSorted[urlsObjectsSorted.length - 1];
-    return R.path(['pocketID', 'length'], maxItem) || 0;
+    return R.path(['pocketTimeAdded', 'length'], maxItem) || 0;
   }
 
   /**
