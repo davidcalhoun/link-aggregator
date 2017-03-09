@@ -1040,12 +1040,17 @@ class Aggregator {
     urlsCopy = R.sortWith([R.descend(R.prop('rank'))])(urlsCopy);
 
     // Figure out size of each 10% segment.
-    const segmentSize = Math.ceil(urlsCopy.length / 10);
+    let urlsCopyRanks = R.pluck('rank')(urlsCopy);
+    urlsCopyRanks = R.uniq(urlsCopyRanks);
+    const segmentSize = Math.ceil(urlsCopyRanks.length / 10);
     const segments = [];
-    for(let a=1, len=10; a<=len; a++) {
-      let segmentVal = R.path([a, 'rank'], urlsCopy);
+    const segmentLength = (urlsCopyRanks < 10) ? urlsCopyRanks.length : 10;
+    for(let a=0, len=segmentLength; a<len; a++) {
+      let segmentVal = urlsCopyRanks[a];
       segments.push(segmentVal);
     }
+
+    console.log('ranking segments', segments)
 
     urlsCopy = urlsCopy.map((urlObj) => {
       let rank = this.getSegmentPosition(urlObj.rank, segments);
@@ -1063,7 +1068,7 @@ class Aggregator {
     const segmentsSorted = R.sort(R.gt, segments);
 
     for(let a=0, len=segmentsSorted.length; a<len; a++) {
-      if(rank > segmentsSorted[a]) {
+      if(rank >= segmentsSorted[a]) {
         continue;
       } else {
         return a + 1;
@@ -1264,7 +1269,7 @@ class Aggregator {
       let filteredTweets = this.filterTweets(tweets, this.ignoreWords);
 
       // Pare down list to a manageable size.
-      filteredTweets = filteredTweets.splice(0, 200);
+      //filteredTweets = filteredTweets.splice(0, 300);
 
       argsCopy.ignoreWords = this.ignoreWords;
 
