@@ -1071,7 +1071,10 @@ class Aggregator {
    * E.g. rank: 3, segments: [1,3,10] will return index 1
    */
   getSegmentPosition(rank, segments) {
+    const fnName = `${moduleName}/getSegmentPosition`;
     const segmentsSorted = R.sort(R.gt, segments);
+
+    let position = -1;
 
     segmentsSorted.push(null);
 
@@ -1079,11 +1082,18 @@ class Aggregator {
       if(rank >= segmentsSorted[a]) {
         continue;
       } else {
-        return a;
+        position = a;
+        break;
       }
     }
 
-    return 10;
+    if(position = -1) {
+      position = 10;
+    }
+
+    winston.debug(`${fnName}: ${rank} -> ${position}`);
+
+    return position;
   }
 
   /**
