@@ -1077,7 +1077,7 @@ class Aggregator {
     let position = -1;
 
     for(let a=0, len=segmentsSorted.length; a<len; a++) {
-      if(rank >= segmentsSorted[a]) {
+      if(rank > segmentsSorted[a]) {
         continue;
       } else {
         position = a;
