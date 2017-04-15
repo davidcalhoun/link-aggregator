@@ -15,7 +15,7 @@ describe('twitter', function(){
       this.timeout(10000);
 
       // // https://twitter.com/franksvalli/lists/frontend
-      linkAggregator.twitterList({
+      linkAggregator.fetchTwitterList({
         owner: 'franksvalli',
         name: 'frontend',
         multipleCallbacks: false,
@@ -76,7 +76,7 @@ describe('twitter', function(){
       });
 
       // // https://twitter.com/franksvalli/lists/frontend
-      linkAggregator.twitterList({
+      linkAggregator.fetchTwitterList({
         owner: 'franksvalli',
         name: 'frontend',
         multipleCallbacks: false,

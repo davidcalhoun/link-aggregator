@@ -250,7 +250,7 @@ class Aggregator {
    * Filters out tweets missing urls, or containing words that should be ignored.
    */
   filterTweets(tweets, ignoreWords) {
-    const fnName = `${moduleName}/filterUrlsWithIgnoreWords`;
+    const fnName = `${moduleName}/filterTweets`;
 
     const numBefore = tweets.length;
 
@@ -260,7 +260,7 @@ class Aggregator {
       if (tweet.retweeted_status) tweet = tweet.retweeted_status;
 
       // Discard tweets with no urls.
-      if (!tweet.entities || tweet.entities.urls.length === 0) {
+      if (!tweet.entities || !tweet.entities.urls || tweet.entities.urls.length === 0) {
         //winston.debug(`Rejecting - no urls present in tweet: ${tweet.text}`);
         return true;
       }
@@ -386,8 +386,6 @@ class Aggregator {
       // TODO: update mention times
     } else if(urlMeta.pocketObj) {
       // Pocket url processing.
-
-      //console.log(22323, 'pocket', url1, urlMeta.pocketObj)
 
       const {
         url,
@@ -812,7 +810,7 @@ class Aggregator {
    * Pulls out urls from tweets, and scrapes each individual url.
    */
   tweetToURLs(tweet, args, done) {
-    const fnName = `${moduleName}/tweetToURL`;
+    const fnName = `${moduleName}/tweetToURLs`;
 
     // Make a copy of the tweet.
     let tweetObj = Object.assign({}, tweet);
@@ -879,19 +877,21 @@ class Aggregator {
    * Removes query params from a url.  These params are often used for campaign tracking.
    * TODO: url transforms for login redirects, e.g.
    * https://myaccount.nytimes.com/auth/login?URI=https://www.nytimes.com/2017/01/01/technology/google-amp-mobile-publishing.html?_r=0
+   * https://www.forbes.com/forbes/welcome/?toURL=http://forbes.com/
+   *
+   * TODO: make case insensitive
+   * TODO: pull out, make configurable by client
    */
   removeJunkURLParams(url) {
     const removeParams = [
-      // Google campaign url params.
-      // https://ga-dev-tools.appspot.com/campaign-url-builder/
-      'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'utm_cid',
+      // Misc
+      '_mc', 'abg', 'abt', 'app', 'camp', 'cid', 'ecid', 'email_SHA1_lc', 'ex_cid', 'extid',
+      'idg_eid', 'imm_mid', 'linkCode', 'linkId', 'LSD', 'mwrsm', 'partnerid', 'postshare', 'ref',
+      'referer', 'referrer', 'rf', 'rref', 's_subsrc', 'source', 'sp_ref', 'sr', 'src', 'tid',
+      'tse_id', 'ttl', 'via', 'xid',
 
-      // Marketo
-      // http://docs.marketo.com/display/public/DOCS/Disable+Tracking+for+an+Email+Link
-      'mkt_tok',
-
-      // Mashable custom UTM
-      'utm_cid',
+      // HubSpot
+      '_hsenc', '_hsmi',
 
       // The Guardian
       'CMP',
@@ -899,44 +899,83 @@ class Aggregator {
       // Oreilly
       'cmp',
 
-      // Simple Reach (implemented on Techcrunch, etc)
-      'sr_share',
+      // Bloomberg, etc
+      'cmpid',
 
-      // NY Times, Vulture, etc.
-      'smprod', 'smid', 'mid', 'smtyp', 'smvar', 'mwrsm', 'rref', 'abt', 'abg',
+      // YouTube
+      'feature',
 
       // Medium
       'gi',
 
-      // Bloomberg, etc
-      'cmpid',
-
-      // LinkedIn
-      'trk', 'trkInfo',
-
-      // Forbes
-      'refURL',
-
-      // Yahoo News
-      'soc_trk', 'soc_src',
+      // Hootsuite
+      'hootPostID', 'platform',
 
       // New Yorker, etc
       'mbid',
 
-      // YouTube
-      'feature',
+      // Mailchimp
+      'mc_cid', 'mc_eid',
+
+      // Marketo
+      // http://docs.marketo.com/display/public/DOCS/Disable+Tracking+for+an+Email+Link
+      'mkt_tok',
+
+      // Techcrunch, Huffingtonpost
+      'ncid',
+
+      // Comscore
+      'ns_source', 'ns_mchannel', 'ns_campaign', 'ns_linkname', 'ns_fee',
+
+      // Forbes
+      'refURL',
+
+      // NY Times, Vulture, etc.
+      'smprod', 'smid', 'mid', 'smtyp', 'smvar',
+
+      // Yahoo News
+      'soc_src', 'soc_trk',
+
+      // Simple Reach (implemented on Techcrunch, Engadget, etc)
+      'sr_share', 'sr_source',
+
+      // LinkedIn
+      'trk', 'trkInfo',
+
+      // Google campaign url params.
+      // Note: UTM = 'Urchin tracking module'
+      // https://ga-dev-tools.appspot.com/campaign-url-builder/
+      'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'utm_cid', 'utm_name',
 
       // Webtrends
       'WT.mc_id',
 
       {
-        domain: ['www.nytimes.com', 'myaccount.nytimes.com'],
-        params: ['_r']
+        doamin: 'www.aclu.org',
+        params: ['redirect', 'ms']
+      },
+
+      {
+        domain: ['www.nytimes.com', 'myaccount.nytimes.com', 'mobile.nytimes.com'],
+        params: [
+          '_r', 'action', 'pgtype', 'clickSource', 'module', 'region', 'WT.nav', 'emc', 'nl',
+          'nlid', 'te'
+        ]
+      },
+
+      {
+        domain: 'www.washingtonpost.com',
+        params: ['wpisrc', 'wpmm', 'hpid']
+      },
+
+      {
+        domain: 'www.economist.com',
+        params: ['fsrc']
       },
 
       {
         domain: 'meetup.com',
-        params: ['a']
+        params: ['a', 'rv', '_af', '_af_eid', 'https']
       },
 
       {
@@ -944,9 +983,77 @@ class Aggregator {
         params: ['feature']
       },
 
-      // Misc
-      'source', 'ref', 'idg_eid', 's_subsrc', 'referer', 'referrer', 'xid', 'sp_ref', 'src', 'tid',
-      'postshare', 'extid', 'imm_mid',
+      {
+        domain: 'itunes.apple.com',
+        params: ['mt']
+      },
+
+      {
+        domain: 'www.magzter.com',
+        params: ['dt']
+      },
+
+      {
+        domain: 'www.cbsnews.com',
+        params: ['ftag']
+      },
+
+      {
+        domain: 'www.npr.org',
+        params: ['ft', 'f']
+      },
+
+      {
+        domain: ['www.eventbrite.com', 'www.eventbrite.co.uk'],
+        params: ['aff']
+      },
+
+      {
+        domain: ['www.amazon.com', 'www.eventbrite.co.uk'],
+        params: ['aff']
+      },
+
+      {
+        domain: ['www.amazon.com', 'www.amazon.co.uk', 'smile.amazon.com'],
+        params: [
+          'qid', 'keywords', 'creativeASIN', 'ie', 'tag', 'ref_', 'sr', 'psc', '_encoding', 'refRID'
+        ]
+      },
+
+      {
+        domain: 'businessinsider.com',
+        params: ['r', 'IR']
+      },
+
+      {
+        domain: 'research.googleblog.com',
+        params: ['m']
+      },
+
+      {
+        domain: ['www.upi.com'],
+        params: ['spt', 'or']
+      },
+
+      {
+        domain: ['medium.freecodecamp.com'],
+        params: ['r']
+      },
+
+      {
+        domain: ['www.popsci.com'],
+        params: ['dom']
+      },
+
+      {
+        domain: ['www.apple.com'],
+        params: ['fnode']
+      },
+
+      {
+        domain: ['gizmodo.com'],
+        params: ['rev']
+      }
     ];
 
     const urlParsed = urlUtil.parse(url, true);
@@ -1055,8 +1162,6 @@ class Aggregator {
       let segmentVal = urlsCopyRanks[a];
       segments.push(segmentVal);
     }
-
-    console.log('ranking segments', segments)
 
     urlsCopy = urlsCopy.map((urlObj) => {
       let rank = this.getSegmentPosition(urlObj.rank, segments);
@@ -1275,7 +1380,7 @@ class Aggregator {
    * Gets tweets from a user's Twitter list.  With keyword filtering to discard irrelevant tweets.
    */
   fetchTwitterList(args, done) {
-    const fnName = `${moduleName}/twitterList`;
+    const fnName = `${moduleName}/fetchTwitterList`;
 
     const argsCopy = Object.assign({}, args);
 
@@ -1306,7 +1411,7 @@ class Aggregator {
    * TODO: replace fetch and Promises
    */
   fetchPocketList(args, done) {
-    const fnName = `${moduleName}/getPocketList`;
+    const fnName = `${moduleName}/fetchPocketList`;
     done = done || (() => {});
 
     const argsCopy = Object.assign({}, args);
