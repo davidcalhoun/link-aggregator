@@ -65,6 +65,30 @@ class Aggregator {
     this.urls = {};
 
     client.set(redisIsFetchingKey, 0);
+
+    // Used for internal performance timing.
+    this._performanceTimers = {};
+  }
+
+  /**
+   * Performance timing (similar usage as console.time).
+   */
+  _timerStart(id) {
+    this._performanceTimers[id] = Date.now();
+  }
+
+  /**
+   * Performance timing (similar usage as console.time).
+   */
+  _timerEnd(id) {
+    if (this._performanceTimers[id]) {
+      const timeMS = Date.now() - this._performanceTimers[id];
+
+      winston.debug(`Timer ${id}: ${timeMS} ms.`);
+
+      // Clear timer.
+      this._performanceTimers[id] = null;
+    }
   }
 
   /**
@@ -159,7 +183,7 @@ class Aggregator {
   _asyncGetTwitterList(args, cb) {
     const argsCopy = Object.assign({}, args);
 
-    // Tests: returns a data stub immediately.
+    // Tests: return a data stub immediately.
     if (argsCopy.dataStub) return cb(null, argsCopy.dataStub);
 
     let tweets = [];
@@ -782,9 +806,13 @@ class Aggregator {
 
     winston.debug(`${fnName}: processing ${tweets.length} tweets...`);
 
+    this._timerStart(fnName);
+
     const parallelFns = R.map((tweet) => ((parallelCb) => this.tweetToURLs(tweet, args, parallelCb)), tweets);
     async.parallelLimit(parallelFns, 5, (err, reply) => {
       //winston.debug(`${fnName} parallelLimit reply:`, reply);
+
+      this._timerEnd(fnName);
 
       let flattenedUrlObjects = R.flatten(reply);
 
@@ -1351,12 +1379,14 @@ class Aggregator {
     const fnName = `${moduleName}/fetchLists`;
     const parallelFns = [];
 
+    this._timerStart(fnName);
+
     client.get(redisIsFetchingKey, (err, reply) => {
       if (reply !== '0') {
-        winston.debug(`${fnName}: already fetching lists, so returning early. ${reply}`);
+        winston.debug(`${fnName}: list fetching already active.`);
         return done(null, []);
       } else {
-        winston.debug(`${fnName}: fetching not already in progress, so ok to proceed. ${reply}`)
+        winston.debug(`${fnName}: starting list fetching.`)
       }
 
       return client.set(redisIsFetchingKey, Date.now(), () => {
@@ -1389,7 +1419,8 @@ class Aggregator {
           allUrls = R.unionWith(R.eqBy(R.prop('url')), allUrls, []);
           console.log(`after dupe removal: ${allUrls.length}`);
 
-          winston.debug(`${fnName}: complete!`)
+          winston.debug(`${fnName}: complete!`);
+          this._timerEnd(fnName);
           client.set(redisIsFetchingKey, 0);
 
           return done(null, allUrls);
@@ -1406,12 +1437,16 @@ class Aggregator {
 
     const argsCopy = Object.assign({}, args);
 
-    this._asyncGetTwitterList(args, (err, tweets) => {
+    this._timerStart(fnName);
+
+    this._asyncGetTwitterList(argsCopy, (err, tweets) => {
       // Sanity checks
       if (err) return done(`${fnName} ${err}`);
       if (tweets.length === 0) return done(`${fnName} No tweets - network problems?`);
 
-      winston.debug(`${tweets.length} tweets returned before processing.`);
+      this._timerEnd(fnName);
+
+      winston.debug(`${fnName}: ${tweets.length} tweets returned before processing.`);
 
       // Filter out obviously irrelevant tweets.  After url scraping, we'll have to run this again.
       let filteredTweets = this.filterTweets(tweets, this.ignoreWords);
@@ -1452,6 +1487,8 @@ class Aggregator {
     // Use fetchStub for tests.
     const fetchAction = fetchStub || fetch;
 
+    this._timerStart(fnName);
+
     const fetchPocket = fetchAction(apiUrl, {
       method: 'post',
       mode: 'cors',
@@ -1484,6 +1521,8 @@ class Aggregator {
       timeout
     ])
     .then((pocketAPIResponse) => {
+      this._timerEnd(fnName);
+
       return this.pocketToURLs(pocketAPIResponse, {
         tag,
         username
