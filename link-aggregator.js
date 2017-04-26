@@ -1449,8 +1449,6 @@ class Aggregator {
       return done(`${fnName} error: required args are not present: ${argsNotPresentStr}`);
     }
 
-    const self = this;
-
     // Use fetchStub for tests.
     const fetchAction = fetchStub || fetch;
 
