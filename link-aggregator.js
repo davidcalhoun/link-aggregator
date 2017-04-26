@@ -1227,24 +1227,46 @@ class Aggregator {
       pocketTimeAdded
     } = urlObj;
 
-    const faveRanking = this.normalizeVal(tweetFavoriteCount, 0, maxFaves, 0, 9);
-    const retweetRanking = this.normalizeVal(tweetRetweetCount, 0, maxRetweets, 0, 9);
-    const pocketRanking = this.normalizeVal(pocketTimeAdded.length, 0, maxNumPocketMentions, 0, 9);
+    const faveVal = tweetFavoriteCount || 0;
+    const retweetVal = tweetRetweetCount || 0;
+    const pocketTimeVal = pocketTimeAdded.length || 0;
+
+    const faveRanking = this.normalizeVal(faveVal, 0, maxFaves, 0, 9);
+    const retweetRanking = this.normalizeVal(retweetVal, 0, maxRetweets, 0, 9);
+    const pocketRanking = this.normalizeVal(pocketTimeVal, 0, maxNumPocketMentions, 0, 9);
 
     const rankingArr = [pocketRanking, retweetRanking, faveRanking];
     let ranking = rankingArr.join('');
 
     ranking = parseFloat(ranking) * 1000;
 
-    winston.debug(`${fnName}: ${ranking}, ${rankingArr}, ${pocketTimeAdded.length}, ${tweetRetweetCount}, ${tweetFavoriteCount}, ${url}`);
+    winston.debug(`${fnName}: ${ranking} ; ${rankingArr} ; ${pocketTimeAdded.length}, ${tweetRetweetCount}, ${tweetFavoriteCount}, ${url}`);
 
     return ranking;
   }
 
   normalizeVal(val, min, max, newMin, newMax) {
-    const percentage = (val - min) / (max - min);
+    const fnName = `${moduleName}/normalizeVal`;
 
-    return newMin + ((newMax - newMin) * percentage);
+    // Sanity checking.
+    const args = [val, min, max, newMin, newMax];
+    args.forEach((arg, index) => {
+      if (typeof arg !== 'number' || Number.isNaN(arg)) {
+        winston.error(`${fnName}: input argument index ${index} is not a number.`);
+        return 0;
+      }
+    });
+
+    let percentage = (val - min) / (max - min);
+
+    // Sanity check - check for division by 0.
+    if (Number.isNaN(percentage)) {
+      percentage = 0;
+    }
+
+    const outputVal = newMin + ((newMax - newMin) * percentage);
+
+    return outputVal;
   }
 
   /**
