@@ -1185,9 +1185,9 @@ class Aggregator {
     urlsCopyRanks = R.uniq(urlsCopyRanks);
     const segmentSize = Math.ceil(urlsCopyRanks.length / 10);
     const segments = [];
-    const segmentLength = (urlsCopyRanks < 10) ? urlsCopyRanks.length : 10;
+    const segmentLength = 10;
     for(let a=0, len=segmentLength; a<len; a++) {
-      let segmentVal = urlsCopyRanks[a];
+      let segmentVal = urlsCopyRanks[a] || 0;
       segments.push(segmentVal);
     }
 
@@ -1212,7 +1212,7 @@ class Aggregator {
 
     let position = -1;
 
-    for(let a=0, len=segmentsSorted.length; a<len; a++) {
+    for (let a=0, len=segmentsSorted.length; a<len; a++) {
       if(rank > segmentsSorted[a]) {
         continue;
       } else {
@@ -1221,13 +1221,13 @@ class Aggregator {
       }
     }
 
-    if(position == -1) {
+    if (position == -1) {
       position = 9;
     }
 
     position++;
 
-    console.log(`${fnName}: ${rank} -> ${position}`);
+    console.log(`${fnName}: ${rank} -> ${position} ; ${segments}`);
 
     return position;
   }
