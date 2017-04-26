@@ -492,7 +492,7 @@ class Aggregator {
   fetchUrlDetails(url, args, done) {
     const fnName = `${moduleName}/fetchUrlDetails`;
 
-    let urlCopy = url;
+    let urlCopy = this.removeJunkURLParams(url);
 
     const requestOptions = {
       timeout: 8000
