@@ -556,6 +556,8 @@ class Aggregator {
       const wasRedirected = urlCopy !== newUrl;
       urlCopy = this.removeJunkURLParams(newUrl);
 
+      console.log(222, urlCopy)
+
       if (wasRedirected) {
         //winston.debug(`${fnName}: redirect, so rewriting ${url} to ${urlCopy}`);
 
@@ -976,7 +978,7 @@ class Aggregator {
       'WT.mc_id',
 
       {
-        doamin: 'www.aclu.org',
+        domain: 'www.aclu.org',
         params: ['redirect', 'ms']
       },
 
@@ -1104,7 +1106,8 @@ class Aggregator {
           urlParsed.hostname;
 
         // Domain-specific param removal.
-        const domainMatches = hostname.indexOf(param.domain) !== -1;
+        const domainMatches = param.domain.indexOf(urlParsed.hostname) !== -1;
+
         if (domainMatches) {
           param.params.forEach(param2 => delete query[param2]);
         }
