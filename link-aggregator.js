@@ -732,7 +732,7 @@ class Aggregator {
       // Find the first paragraph containing more than 20 words, then use that as an excerpt.
       // Note: don't use fat arrow here because 'this' context needs to NOT be outer closure
       // context.
-      const paragraphs = $('p');
+      const paragraphs = $('*:not(aside) p');
       paragraphs.each(function processParagraph() {
         // TODO: DON'T traverse ALL ps
         if (!excerpt && $(this).text().split(/\s+/).length > 20) {
@@ -1274,7 +1274,7 @@ class Aggregator {
     let ranking = rankingArr.join('');
 
     ranking = parseFloat(ranking) * 1000;
-    
+
     return ranking;
   }
 
