@@ -131,7 +131,7 @@ class Aggregator {
 
       if (Array.isArray(regexp)) regexp = regexp.join('|');
 
-      regexp = new RegExp(regexp, 'gi');
+      regexp = new RegExp(`\bregexp\b`, 'gi');
 
       return [
         category,
