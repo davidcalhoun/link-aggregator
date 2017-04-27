@@ -915,10 +915,10 @@ class Aggregator {
   removeJunkURLParams(url) {
     const removeParams = [
       // Misc
-      '_mc', 'abg', 'abt', 'app', 'camp', 'cid', 'ecid', 'email_SHA1_lc', 'ex_cid', 'extid',
+      '_mc', 'abg', 'abt', 'aff', 'app', 'camp', 'cid', 'ecid', 'email_SHA1_lc', 'ex_cid', 'extid',
       'idg_eid', 'imm_mid', 'link_id', 'linkCode', 'linkId', 'LSD', 'mwrsm', 'partnerid',
-      'postshare', 'ref', 'ref_', 'referer', 'referrer', 'rf', 'rref', 's_subsrc', 'share', 'source', 'sp_ref', 'sr', 'src',
-      'tid', 'trackId', 'tse_id', 'ttl', 'via', 'xid',
+      'postshare', 'ref', 'ref_', 'referer', 'referrer', 'rf', 'rref', 's_subsrc', 'share',
+      'shared', 'source', 'sp_ref', 'sr', 'src', 'tid', 'trackId', 'tse_id', 'ttl', 'via', 'xid',
 
       // HubSpot
       '_hsenc', '_hsmi',
@@ -983,93 +983,10 @@ class Aggregator {
       },
 
       {
-        domain: ['www.nytimes.com', 'myaccount.nytimes.com', 'mobile.nytimes.com'],
-        params: [
-          '_r', 'action', 'pgtype', 'clickSource', 'module', 'region', 'WT.nav', 'emc', 'nl',
-          'nlid', 'te'
-        ]
-      },
-
-      {
-        domain: 'www.washingtonpost.com',
-        params: ['wpisrc', 'wpmm', 'hpid']
-      },
-
-      {
-        domain: 'www.economist.com',
-        params: ['fsrc']
-      },
-
-      {
-        domain: 'meetup.com',
-        params: ['a', 'rv', '_af', '_af_eid', 'https']
-      },
-
-      {
-        domain: 'www.youtube.com',
-        params: ['feature', 'a']
-      },
-
-      {
-        domain: 'itunes.apple.com',
-        params: ['mt']
-      },
-
-      {
-        domain: 'www.magzter.com',
-        params: ['dt']
-      },
-
-      {
-        domain: 'www.cbsnews.com',
-        params: ['ftag']
-      },
-
-      {
-        domain: 'www.npr.org',
-        params: ['ft', 'f']
-      },
-
-      {
-        domain: ['www.eventbrite.com', 'www.eventbrite.co.uk'],
-        params: ['aff']
-      },
-
-      {
-        domain: ['www.amazon.com', 'www.eventbrite.co.uk'],
-        params: ['aff']
-      },
-
-      {
         domain: ['www.amazon.com', 'www.amazon.co.uk', 'smile.amazon.com'],
         params: [
           'qid', 'keywords', 'creativeASIN', 'ie', 'tag', 'ref_', 'sr', 'psc', '_encoding', 'refRID'
         ]
-      },
-
-      {
-        domain: 'businessinsider.com',
-        params: ['r', 'IR']
-      },
-
-      {
-        domain: 'research.googleblog.com',
-        params: ['m']
-      },
-
-      {
-        domain: ['www.upi.com'],
-        params: ['spt', 'or']
-      },
-
-      {
-        domain: ['medium.freecodecamp.com'],
-        params: ['r']
-      },
-
-      {
-        domain: ['www.popsci.com'],
-        params: ['dom']
       },
 
       {
@@ -1078,8 +995,76 @@ class Aggregator {
       },
 
       {
+        domain: 'businessinsider.com',
+        params: ['r', 'IR']
+      },
+
+      {
+        domain: 'www.cbsnews.com',
+        params: ['ftag']
+      },
+
+      {
+        domain: 'www.economist.com',
+        params: ['fsrc']
+      },
+
+      {
+        domain: ['www.eventbrite.com', 'www.eventbrite.co.uk'],
+        params: ['aff']
+      },
+
+      {
         domain: ['gizmodo.com'],
         params: ['rev']
+      },
+
+      {
+        domain: 'itunes.apple.com',
+        params: ['mt']
+      },
+
+      {
+        domain: 'meetup.com',
+        params: ['a', 'rv', '_af', '_af_eid', 'https']
+      },
+
+      {
+        domain: 'www.magzter.com',
+        params: ['dt']
+      },
+
+      {
+        domain: ['medium.freecodecamp.com'],
+        params: ['r']
+      },
+
+      {
+        domain: 'www.npr.org',
+        params: ['ft', 'f']
+      },
+
+      {
+        domain: ['www.nytimes.com', 'myaccount.nytimes.com', 'mobile.nytimes.com'],
+        params: [
+          '_r', 'action', 'pgtype', 'clickSource', 'module', 'region', 'WT.nav', 'emc', 'nl',
+          'nlid', 'te'
+        ]
+      },
+
+      {
+        domain: ['www.popsci.com'],
+        params: ['dom']
+      },
+
+      {
+        domain: ['www.reddit.com'],
+        params: ['st', 'sh']
+      },
+
+      {
+        domain: 'research.googleblog.com',
+        params: ['m']
       },
 
       {
@@ -1088,8 +1073,24 @@ class Aggregator {
       },
 
       {
+        domain: ['www.upi.com'],
+        params: ['spt', 'or']
+      },
+
+      {
+        domain: 'www.washingtonpost.com',
+        params: ['wpisrc', 'wpmm', 'hpid']
+      },
+
+
+      {
         domain: ['www.wsj.com'],
         params: ['mod']
+      },
+
+      {
+        domain: 'www.youtube.com',
+        params: ['feature', 'a']
       }
     ];
 
