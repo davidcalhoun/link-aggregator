@@ -1422,6 +1422,9 @@ class Aggregator {
           // Combine all lists together.
           let allUrls = R.flatten(urls);
 
+          // Reject null urls.  TODO: investigate further up why this is happening.
+          allUrls = R.reject(R.isNil, allUrls);
+
           // 1-10 ranking.
           allUrls = this.rankUrls(allUrls);
 
