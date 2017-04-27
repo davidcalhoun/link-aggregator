@@ -556,8 +556,6 @@ class Aggregator {
       const wasRedirected = urlCopy !== newUrl;
       urlCopy = this.removeJunkURLParams(newUrl);
 
-      console.log(222, urlCopy)
-
       if (wasRedirected) {
         //winston.debug(`${fnName}: redirect, so rewriting ${url} to ${urlCopy}`);
 
@@ -1238,8 +1236,6 @@ class Aggregator {
 
     position++;
 
-    console.log(`${fnName}: ${rank} -> ${position} ; ${segments}`);
-
     return position;
   }
 
@@ -1278,9 +1274,7 @@ class Aggregator {
     let ranking = rankingArr.join('');
 
     ranking = parseFloat(ranking) * 1000;
-
-    winston.debug(`${fnName}: ${ranking} ; ${rankingArr} ; ${pocketTimeAdded.length}, ${tweetRetweetCount}, ${tweetFavoriteCount}, ${url}`);
-
+    
     return ranking;
   }
 
