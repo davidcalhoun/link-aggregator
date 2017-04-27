@@ -910,8 +910,8 @@ class Aggregator {
    * TODO: make case insensitive
    * TODO: pull out, make configurable by client
    */
-  removeJunkURLParams(url) {
-    const removeParams = [
+  removeJunkURLParams(url, removeConfig) {
+    const removeParams = removeConfig || [
       // Misc
       '_mc', 'abg', 'abt', 'aff', 'app', 'camp', 'cid', 'ecid', 'email_SHA1_lc', 'ex_cid', 'extid',
       'idg_eid', 'imm_mid', 'link_id', 'linkCode', 'linkId', 'LSD', 'mwrsm', 'partnerid',
@@ -929,9 +929,6 @@ class Aggregator {
 
       // Bloomberg, etc
       'cmpid',
-
-      // Medium
-      'gi',
 
       // Hootsuite
       'hootPostID', 'platform',
@@ -1033,6 +1030,12 @@ class Aggregator {
       },
 
       {
+        domain: ['medium.com'],
+        params: ['gi'],
+        removeHash: true
+      },
+
+      {
         domain: ['medium.freecodecamp.com'],
         params: ['r']
       },
@@ -1109,6 +1112,8 @@ class Aggregator {
 
         if (domainMatches) {
           param.params.forEach(param2 => delete query[param2]);
+
+          if (param.removeHash) urlParsed.hash = '';
         }
       }
     });
