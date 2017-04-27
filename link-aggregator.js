@@ -22,9 +22,9 @@ const client = redis.createClient();
 const moduleName = 'link-aggregator';
 
 // Namespace prefix for organizing Redis data.
-const redisNS = 'la-';
+let redisNS = 'la-';
 
-const redisIsFetchingKey = `${redisNS}isCurrentlyFetching`;
+const redisIsFetchingKey = 'isCurrentlyFetching';
 
 // Configure request.js
 const request = origRequest.defaults({
@@ -56,7 +56,7 @@ if (process.env.NODE_ENV !== 'production') {
  * Public functions.
  */
 class Aggregator {
-  constructor() {
+  constructor(config) {
     // Init Codebird (helper for accessing Twitter API)
     this.codebird = new Codebird();
 
@@ -64,10 +64,13 @@ class Aggregator {
     // it.
     this.urls = {};
 
-    client.set(redisIsFetchingKey, 0);
+    client.set(`${redisNS}${redisIsFetchingKey}`, 0);
 
     // Used for internal performance timing.
     this._performanceTimers = {};
+
+    // Allow redis prefix override.
+    if (config && config.redisPrefix) redisNS = config.redisPrefix;
   }
 
   /**
@@ -598,9 +601,9 @@ class Aggregator {
       // update cache
       client.set(`${redisNS}${urlCopy}`, urlDetailsStr);
 
-      this.uniqueLPUSH(`${redisNS}urls`, urlCopy);
-
-      done(null, urlDetails);
+      return this.uniqueLPUSH(`${redisNS}urls`, urlCopy, (err, reply) => {
+        done(null, urlDetails);
+      });
     });
   };
 
@@ -622,14 +625,11 @@ class Aggregator {
         // Key doesn't exist in list yet, so push it.
         client.lpush(key, val, (err, pushReply) => {
           if (err) winston.error(`${fnName}: err`);
-
-          // Cleanup placeholder.
-          return client.lrem(key, 0, placeholderVal, cb);
         });
-      } else {
-        // Cleanup placeholder.
-        return client.lrem(key, 0, placeholderVal, cb);
       }
+
+      // Cleanup placeholder.
+      return client.lrem(key, 0, placeholderVal, cb);
     });
   }
 
@@ -914,9 +914,9 @@ class Aggregator {
     const removeParams = [
       // Misc
       '_mc', 'abg', 'abt', 'app', 'camp', 'cid', 'ecid', 'email_SHA1_lc', 'ex_cid', 'extid',
-      'idg_eid', 'imm_mid', 'linkCode', 'linkId', 'LSD', 'mwrsm', 'partnerid', 'postshare', 'ref',
-      'referer', 'referrer', 'rf', 'rref', 's_subsrc', 'source', 'sp_ref', 'sr', 'src', 'tid',
-      'tse_id', 'ttl', 'via', 'xid',
+      'idg_eid', 'imm_mid', 'link_id', 'linkCode', 'linkId', 'LSD', 'mwrsm', 'partnerid',
+      'postshare', 'ref', 'ref_', 'referer', 'referrer', 'rf', 'rref', 's_subsrc', 'share', 'source', 'sp_ref', 'sr', 'src',
+      'tid', 'trackId', 'tse_id', 'ttl', 'via', 'xid',
 
       // HubSpot
       '_hsenc', '_hsmi',
@@ -929,9 +929,6 @@ class Aggregator {
 
       // Bloomberg, etc
       'cmpid',
-
-      // YouTube
-      'feature',
 
       // Medium
       'gi',
@@ -1008,7 +1005,7 @@ class Aggregator {
 
       {
         domain: 'www.youtube.com',
-        params: ['feature']
+        params: ['feature', 'a']
       },
 
       {
@@ -1081,6 +1078,16 @@ class Aggregator {
       {
         domain: ['gizmodo.com'],
         params: ['rev']
+      },
+
+      {
+        domain: ['www.reuters.com'],
+        params: ['mod', 'channelName']
+      },
+
+      {
+        domain: ['www.wsj.com'],
+        params: ['mod']
       }
     ];
 
@@ -1381,7 +1388,7 @@ class Aggregator {
 
     this._timerStart(fnName);
 
-    client.get(redisIsFetchingKey, (err, reply) => {
+    client.get(`${redisNS}${redisIsFetchingKey}`, (err, reply) => {
       if (reply !== '0') {
         winston.debug(`${fnName}: list fetching already active.`);
         return done(null, []);
@@ -1389,7 +1396,7 @@ class Aggregator {
         winston.debug(`${fnName}: starting list fetching.`)
       }
 
-      return client.set(redisIsFetchingKey, Date.now(), () => {
+      return client.set(`${redisNS}${redisIsFetchingKey}`, Date.now(), () => {
         // Pocket
         lists.pocket.forEach((pocketList) => {
           // Separate call for each Pocket tag.
@@ -1421,7 +1428,7 @@ class Aggregator {
 
           winston.debug(`${fnName}: complete!`);
           this._timerEnd(fnName);
-          client.set(redisIsFetchingKey, 0);
+          client.set(`${redisNS}${redisIsFetchingKey}`, 0);
 
           return done(null, allUrls);
         });
