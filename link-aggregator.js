@@ -297,7 +297,7 @@ class Aggregator {
         let txt = `@${tweet.user.screen_name}: ${tweet.text}`;
         const matches = `${txt}`.match(new RegExp(ignoreWord, 'gi'));
 
-        if (matches) winston.debug(`Rejecting due to ignore word "${matches[0]}": ${tweet.text}`);
+        //if (matches) winston.debug(`Rejecting due to ignore word "${matches[0]}": ${tweet.text}`);
 
         return matches;
       })(ignoreWords || []);
