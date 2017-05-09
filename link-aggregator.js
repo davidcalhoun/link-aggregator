@@ -328,7 +328,7 @@ class Aggregator {
 
         const matches = searchString.match(new RegExp(ignoreWord, 'gi'));
 
-        if (matches) winston.debug(`Rejecting url due to ignore word "${matches[0]}": ${url.url}`);
+        //if (matches) winston.debug(`Rejecting url due to ignore word "${matches[0]}": ${url.url}`);
 
         return matches;
       })(ignoreWords || []);
@@ -1418,8 +1418,11 @@ class Aggregator {
         if (parallelFns.length === 0) return done(null, []);
 
         return async.parallelLimit(parallelFns, 2, (err, urls) => {
+          // Combine with old url objects if present.
+          const oldList = lists.oldList || [];
+
           // Combine all lists together.
-          let allUrls = R.flatten(urls);
+          let allUrls = R.flatten(urls, oldList);
 
           // Reject null urls.  TODO: investigate further up why this is happening.
           allUrls = R.reject(R.isNil, allUrls);
@@ -1429,6 +1432,7 @@ class Aggregator {
 
           // Remove dupes.
           console.log(`before dupe removal: ${allUrls.length}`);
+          // TODO: uniqWith instead?
           allUrls = R.unionWith(R.eqBy(R.prop('url')), allUrls, []);
           console.log(`after dupe removal: ${allUrls.length}`);
 
