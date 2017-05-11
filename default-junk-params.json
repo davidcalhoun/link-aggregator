@@ -156,6 +156,12 @@
   },
 
   {
+    "domain": "mashable.com",
+    "params": [],
+    "removeHash": true
+  },
+
+  {
     "domain": "meetup.com",
     "params": ["a", "rv", "_af", "_af_eid", "https"]
   },
