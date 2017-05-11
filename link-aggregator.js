@@ -1255,9 +1255,14 @@ class Aggregator {
 
           // Remove dupes.
           winston.debug(`${fnName}: ${allUrls.length} urls before dupe removal.`);
+
+          console.log(111, 'old urls', R.pluck('url')(oldList).sort());
+
           // TODO: uniqWith instead?
           allUrls = R.unionWith(R.eqBy(R.prop('url')), allUrls, []);
           winston.debug(`${fnName}: ${allUrls.length} after dupe removal.`);
+
+          console.log(222, 'new urls', R.pluck('url')(allUrls).sort());
 
           this._timerEnd(fnName);
           client.set(`${redisNS}${redisIsFetchingKey}`, 0);
