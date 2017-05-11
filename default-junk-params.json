@@ -1,9 +1,53 @@
 [
   { "__comment": "Misc" },
-  "_mc", "abg", "abt", "aff", "app", "camp", "cid", "ecid", "email_SHA1_lc", "ex_cid", "extid",
-  "idg_eid", "imm_mid", "link_id", "linkCode", "linkId", "LSD", "mwrsm", "ncid", "partnerid",
-  "postshare", "ref", "ref_", "referer", "referrer", "refURL", "rf", "rref", "s_subsrc", "share",
-  "shared", "source", "sp_ref", "sr", "src", "tid", "trackId", "tse_id", "ttl", "via", "xid",
+  "_lrsc",
+  "_mc",
+  "abg",
+  "abt",
+  "aff",
+  "app",
+  "camp",
+  "cid",
+  "country",
+  "ecid",
+  "email_SHA1_lc",
+  "ex_cid",
+  "extid",
+  "idg_eid",
+  "imm_mid",
+  "link_id",
+  "linkCode",
+  "linkId",
+  "LSD",
+  "mwrsm",
+  "ncid",
+  "partnerid",
+  "postshare",
+  "ref",
+  "ref_",
+  "referer",
+  "referrer",
+  "refURL",
+  "rf",
+  "rref",
+  "s_subsrc",
+  "sc_cid",
+  "share",
+  "shared",
+  "source",
+  "source_code",
+  "sp_ref",
+  "sr",
+  "src",
+  "tid",
+  "trackId",
+  "tse_id",
+  "ttl",
+  "via",
+  "xid",
+
+  { "__comment": "?" },
+  "adbsc", "adbid", "adbpl", "adbpr",
 
   { "__comment": "HubSpot" },
   "_hsenc", "_hsmi",
@@ -15,7 +59,7 @@
   "cmp",
 
   { "__comment": "Bloomberg, etc" },
-  "cmpid",
+  "cmpid", "cmpid=",
 
   { "__comment": "Hootsuite" },
   "hootPostID", "platform",
@@ -31,6 +75,9 @@
 
   { "__comment": "Comscore" },
   "ns_source", "ns_mchannel", "ns_campaign", "ns_linkname", "ns_fee",
+
+  { "__comment": "Qualtrics" },
+  "Q_CHL", "Q_SocialSource",
 
   { "__comment": "NY Times, Vulture, etc" },
   "smprod", "smid", "mid", "smtyp", "smvar",
@@ -58,7 +105,8 @@
   {
     "domain": ["www.amazon.com", "www.amazon.co.uk", "smile.amazon.com"],
     "params": [
-      "qid", "keywords", "creativeASIN", "ie", "tag", "ref_", "sr", "psc", "_encoding", "refRID"
+      "qid", "keywords", "creativeASIN", "ie", "tag", "ref_", "sr", "psc", "_encoding", "refRID",
+      "linkCode"
     ]
   },
 
@@ -75,6 +123,11 @@
   {
     "domain": "www.cbsnews.com",
     "params": ["ftag"]
+  },
+
+  {
+    "domain": "docs.google.com",
+    "params": ["c", "w"]
   },
 
   {
@@ -95,6 +148,11 @@
   {
     "domain": "itunes.apple.com",
     "params": ["mt"]
+  },
+
+  {
+    "domain": "mailchi.mp",
+    "params": ["e"]
   },
 
   {
@@ -132,6 +190,11 @@
   },
 
   {
+    "domain": "www.pcworld.com",
+    "params": ["sf61342414"]
+  },
+
+  {
     "domain": ["www.popsci.com"],
     "params": ["dom"]
   },
@@ -148,7 +211,7 @@
 
   {
     "domain": ["www.reuters.com"],
-    "params": ["mod", "channelName"]
+    "params": ["channelName", "feedName", "feedType", "mod"]
   },
 
   {
@@ -169,6 +232,6 @@
 
   {
     "domain": "www.youtube.com",
-    "params": ["feature", "a"]
+    "params": ["a", "feature", "flow", "sort", "view"]
   }
 ]

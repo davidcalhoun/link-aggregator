@@ -308,7 +308,7 @@ class Aggregator {
 
     const numRejected = numBefore - tweetsAfter.length;
 
-    winston.info(`${fnName}: ${numRejected} tweet urls rejected`);
+    //winston.info(`${fnName}: ${numRejected} tweet urls rejected`);
 
     return tweetsAfter;
   }
@@ -339,7 +339,7 @@ class Aggregator {
 
     const numUrlsRejected = numUrlsBefore - urlsAfter.length;
 
-    winston.info(`${fnName}: ${numUrlsRejected} urls with ignore words rejected after scraping, ${urlsAfter.length} remaining`);
+    //winston.info(`${fnName}: ${numUrlsRejected} urls with ignore words rejected after scraping, ${urlsAfter.length} remaining`);
 
     return urlsAfter;
   }
@@ -753,6 +753,7 @@ class Aggregator {
 
   /**
    * Filters out non-articles (e.g. links to other tweets).
+   * TODO: is this needed anymore?
    */
   filterNonArticles(urlObjects) {
     const fnName = `${moduleName}/filterNonArticles`;
@@ -794,7 +795,7 @@ class Aggregator {
     }
     const flattenedUrlObjects = R.reject(isURLStale, urlObjects);
     const numUrlsRejected = numUrlsBefore - flattenedUrlObjects.length;
-    winston.debug(`${fnName}: discarded ${numUrlsRejected} stale urls`);
+    //winston.debug(`${fnName}: discarded ${numUrlsRejected} stale urls`);
 
     return flattenedUrlObjects;
   }
@@ -805,7 +806,7 @@ class Aggregator {
   tweetsToURLs(tweets, args, done) {
     const fnName = `${moduleName}/tweetsToURLs`;
 
-    winston.debug(`${fnName}: processing ${tweets.length} tweets...`);
+    //winston.debug(`${fnName}: processing ${tweets.length} tweets...`);
 
     this._timerStart(fnName);
 
@@ -1239,6 +1240,10 @@ class Aggregator {
           // Combine with old url objects if present.
           const oldList = lists.oldList || [];
 
+          winston.debug(`${fnName}: ${oldList.length} old urls.`);
+          winston.debug(`${fnName}: ${urls[0].length} new Pocket urls.`);
+          winston.debug(`${fnName}: ${urls[1].length} new Twitter urls.`);
+
           // Combine all lists together.
           let allUrls = R.flatten(urls, oldList);
 
@@ -1249,12 +1254,11 @@ class Aggregator {
           allUrls = this.rankUrls(allUrls);
 
           // Remove dupes.
-          console.log(`before dupe removal: ${allUrls.length}`);
+          winston.debug(`${fnName}: ${allUrls.length} urls before dupe removal.`);
           // TODO: uniqWith instead?
           allUrls = R.unionWith(R.eqBy(R.prop('url')), allUrls, []);
-          console.log(`after dupe removal: ${allUrls.length}`);
+          winston.debug(`${fnName}: ${allUrls.length} after dupe removal.`);
 
-          winston.debug(`${fnName}: complete!`);
           this._timerEnd(fnName);
           client.set(`${redisNS}${redisIsFetchingKey}`, 0);
 
@@ -1281,7 +1285,7 @@ class Aggregator {
 
       this._timerEnd(fnName);
 
-      winston.debug(`${fnName}: ${tweets.length} tweets returned before processing.`);
+      //winston.debug(`${fnName}: ${tweets.length} tweets returned before processing.`);
 
       // Filter out obviously irrelevant tweets.  After url scraping, we'll have to run this again.
       let filteredTweets = this.filterTweets(tweets, this.ignoreWords);
@@ -1324,6 +1328,10 @@ class Aggregator {
 
     this._timerStart(fnName);
 
+    const msInAMonth = 2592000000;
+    const maxAgeTimestampMS = Date.now() - msInAMonth;
+    const maxAgeTimestampS = maxAgeTimestampMS / 1000;
+
     const fetchPocket = fetchAction(apiUrl, {
       method: 'post',
       mode: 'cors',
@@ -1331,7 +1339,8 @@ class Aggregator {
         // See http://www.jamesfmackenzie.com/getting-started-with-the-pocket-developer-api/
         consumer_key: consumerKey,
         access_token: accessToken,
-        tag
+        tag,
+        since: maxAgeTimestampS
       }),
       headers: {
         'X-Accept': 'application/json',
@@ -1398,7 +1407,7 @@ class Aggregator {
     pocketURLs = this.filterStaleUrls(pocketURLs, (obj) => R.prop('time_added', obj) * 1000);
     winston.debug(`Pocket URLs after stale filter: ${pocketURLs.length}`);
 
-    winston.debug(`${pocketURLs.length} Pocket links returned before processing.`);
+    //winston.debug(`${pocketURLs.length} Pocket links returned before processing.`);
 
     const parallelFns = pocketURLs.map((obj) => (parallelCb) => this.pocketToURL(obj, args, parallelCb));
     return async.parallelLimit(parallelFns, 5, (err, urlObjs) => {
