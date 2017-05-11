@@ -1,0 +1,174 @@
+[
+  { "__comment": "Misc" },
+  "_mc", "abg", "abt", "aff", "app", "camp", "cid", "ecid", "email_SHA1_lc", "ex_cid", "extid",
+  "idg_eid", "imm_mid", "link_id", "linkCode", "linkId", "LSD", "mwrsm", "ncid", "partnerid",
+  "postshare", "ref", "ref_", "referer", "referrer", "refURL", "rf", "rref", "s_subsrc", "share",
+  "shared", "source", "sp_ref", "sr", "src", "tid", "trackId", "tse_id", "ttl", "via", "xid",
+
+  { "__comment": "HubSpot" },
+  "_hsenc", "_hsmi",
+
+  { "__comment": "The Guardian" },
+  "CMP",
+
+  { "__comment": "OReilly" },
+  "cmp",
+
+  { "__comment": "Bloomberg, etc" },
+  "cmpid",
+
+  { "__comment": "Hootsuite" },
+  "hootPostID", "platform",
+
+  { "__comment": "New Yorker, etc" },
+  "mbid",
+
+  { "__comment": "Mailchimp" },
+  "mc_cid", "mc_eid",
+
+  { "__comment": "Marketo" },
+  "mkt_tok",
+
+  { "__comment": "Comscore" },
+  "ns_source", "ns_mchannel", "ns_campaign", "ns_linkname", "ns_fee",
+
+  { "__comment": "NY Times, Vulture, etc" },
+  "smprod", "smid", "mid", "smtyp", "smvar",
+
+  { "__comment": "Yahoo News" },
+  "soc_src", "soc_trk",
+
+  { "__comment": "Simple Reach" },
+  "sr_share", "sr_source",
+
+  { "__comment": "LinkedIn" },
+  "trk", "trkInfo",
+
+  { "__comment": "Google / Urchin" },
+  "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "utm_cid", "utm_name",
+
+  { "__comment": "Webtrends" },
+  "WT.mc_id",
+
+  {
+    "domain": "www.aclu.org",
+    "params": ["redirect", "ms"]
+  },
+
+  {
+    "domain": ["www.amazon.com", "www.amazon.co.uk", "smile.amazon.com"],
+    "params": [
+      "qid", "keywords", "creativeASIN", "ie", "tag", "ref_", "sr", "psc", "_encoding", "refRID"
+    ]
+  },
+
+  {
+    "domain": ["www.apple.com"],
+    "params": ["fnode"]
+  },
+
+  {
+    "domain": "businessinsider.com",
+    "params": ["r", "IR"]
+  },
+
+  {
+    "domain": "www.cbsnews.com",
+    "params": ["ftag"]
+  },
+
+  {
+    "domain": "www.economist.com",
+    "params": ["fsrc"]
+  },
+
+  {
+    "domain": ["www.eventbrite.com", "www.eventbrite.co.uk"],
+    "params": ["aff"]
+  },
+
+  {
+    "domain": ["gizmodo.com"],
+    "params": ["rev"]
+  },
+
+  {
+    "domain": "itunes.apple.com",
+    "params": ["mt"]
+  },
+
+  {
+    "domain": "meetup.com",
+    "params": ["a", "rv", "_af", "_af_eid", "https"]
+  },
+
+  {
+    "domain": "www.magzter.com",
+    "params": ["dt"]
+  },
+
+  {
+    "domain": ["medium.com"],
+    "params": ["gi"],
+    "removeHash": true
+  },
+
+  {
+    "domain": ["medium.freecodecamp.com"],
+    "params": ["r"]
+  },
+
+  {
+    "domain": "www.npr.org",
+    "params": ["ft", "f"]
+  },
+
+  {
+    "domain": ["www.nytimes.com", "myaccount.nytimes.com", "mobile.nytimes.com"],
+    "params": [
+      "_r", "action", "pgtype", "clickSource", "module", "region", "WT.nav", "emc", "nl",
+      "nlid", "te"
+    ]
+  },
+
+  {
+    "domain": ["www.popsci.com"],
+    "params": ["dom"]
+  },
+
+  {
+    "domain": ["www.reddit.com"],
+    "params": ["st", "sh"]
+  },
+
+  {
+    "domain": "research.googleblog.com",
+    "params": ["m"]
+  },
+
+  {
+    "domain": ["www.reuters.com"],
+    "params": ["mod", "channelName"]
+  },
+
+  {
+    "domain": ["www.upi.com"],
+    "params": ["spt", "or"]
+  },
+
+  {
+    "domain": "www.washingtonpost.com",
+    "params": ["wpisrc", "wpmm", "hpid"]
+  },
+
+
+  {
+    "domain": ["www.wsj.com"],
+    "params": ["mod"]
+  },
+
+  {
+    "domain": "www.youtube.com",
+    "params": ["feature", "a"]
+  }
+]

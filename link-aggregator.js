@@ -13,6 +13,7 @@ const origRequest = require('request');
 const async = require('async');
 const winston = require('winston');
 const cheerio = require('cheerio');
+const defaultJunkParams = require('./default-junk-params');
 
 winston.level = 'debug';
 
@@ -908,192 +909,9 @@ class Aggregator {
    * https://www.forbes.com/forbes/welcome/?toURL=http://forbes.com/
    *
    * TODO: make case insensitive
-   * TODO: pull out, make configurable by client
    */
   removeJunkURLParams(url, removeConfig) {
-    const removeParams = removeConfig || [
-      // Misc
-      '_mc', 'abg', 'abt', 'aff', 'app', 'camp', 'cid', 'ecid', 'email_SHA1_lc', 'ex_cid', 'extid',
-      'idg_eid', 'imm_mid', 'link_id', 'linkCode', 'linkId', 'LSD', 'mwrsm', 'partnerid',
-      'postshare', 'ref', 'ref_', 'referer', 'referrer', 'rf', 'rref', 's_subsrc', 'share',
-      'shared', 'source', 'sp_ref', 'sr', 'src', 'tid', 'trackId', 'tse_id', 'ttl', 'via', 'xid',
-
-      // HubSpot
-      '_hsenc', '_hsmi',
-
-      // The Guardian
-      'CMP',
-
-      // Oreilly
-      'cmp',
-
-      // Bloomberg, etc
-      'cmpid',
-
-      // Hootsuite
-      'hootPostID', 'platform',
-
-      // New Yorker, etc
-      'mbid',
-
-      // Mailchimp
-      'mc_cid', 'mc_eid',
-
-      // Marketo
-      // http://docs.marketo.com/display/public/DOCS/Disable+Tracking+for+an+Email+Link
-      'mkt_tok',
-
-      // Techcrunch, Huffingtonpost
-      'ncid',
-
-      // Comscore
-      'ns_source', 'ns_mchannel', 'ns_campaign', 'ns_linkname', 'ns_fee',
-
-      // Forbes
-      'refURL',
-
-      // NY Times, Vulture, etc.
-      'smprod', 'smid', 'mid', 'smtyp', 'smvar',
-
-      // Yahoo News
-      'soc_src', 'soc_trk',
-
-      // Simple Reach (implemented on Techcrunch, Engadget, etc)
-      'sr_share', 'sr_source',
-
-      // LinkedIn
-      'trk', 'trkInfo',
-
-      // Google campaign url params.
-      // Note: UTM = 'Urchin tracking module'
-      // https://ga-dev-tools.appspot.com/campaign-url-builder/
-      'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'utm_cid', 'utm_name',
-
-      // Webtrends
-      'WT.mc_id',
-
-      {
-        domain: 'www.aclu.org',
-        params: ['redirect', 'ms']
-      },
-
-      {
-        domain: ['www.amazon.com', 'www.amazon.co.uk', 'smile.amazon.com'],
-        params: [
-          'qid', 'keywords', 'creativeASIN', 'ie', 'tag', 'ref_', 'sr', 'psc', '_encoding', 'refRID'
-        ]
-      },
-
-      {
-        domain: ['www.apple.com'],
-        params: ['fnode']
-      },
-
-      {
-        domain: 'businessinsider.com',
-        params: ['r', 'IR']
-      },
-
-      {
-        domain: 'www.cbsnews.com',
-        params: ['ftag']
-      },
-
-      {
-        domain: 'www.economist.com',
-        params: ['fsrc']
-      },
-
-      {
-        domain: ['www.eventbrite.com', 'www.eventbrite.co.uk'],
-        params: ['aff']
-      },
-
-      {
-        domain: ['gizmodo.com'],
-        params: ['rev']
-      },
-
-      {
-        domain: 'itunes.apple.com',
-        params: ['mt']
-      },
-
-      {
-        domain: 'meetup.com',
-        params: ['a', 'rv', '_af', '_af_eid', 'https']
-      },
-
-      {
-        domain: 'www.magzter.com',
-        params: ['dt']
-      },
-
-      {
-        domain: ['medium.com'],
-        params: ['gi'],
-        removeHash: true
-      },
-
-      {
-        domain: ['medium.freecodecamp.com'],
-        params: ['r']
-      },
-
-      {
-        domain: 'www.npr.org',
-        params: ['ft', 'f']
-      },
-
-      {
-        domain: ['www.nytimes.com', 'myaccount.nytimes.com', 'mobile.nytimes.com'],
-        params: [
-          '_r', 'action', 'pgtype', 'clickSource', 'module', 'region', 'WT.nav', 'emc', 'nl',
-          'nlid', 'te'
-        ]
-      },
-
-      {
-        domain: ['www.popsci.com'],
-        params: ['dom']
-      },
-
-      {
-        domain: ['www.reddit.com'],
-        params: ['st', 'sh']
-      },
-
-      {
-        domain: 'research.googleblog.com',
-        params: ['m']
-      },
-
-      {
-        domain: ['www.reuters.com'],
-        params: ['mod', 'channelName']
-      },
-
-      {
-        domain: ['www.upi.com'],
-        params: ['spt', 'or']
-      },
-
-      {
-        domain: 'www.washingtonpost.com',
-        params: ['wpisrc', 'wpmm', 'hpid']
-      },
-
-
-      {
-        domain: ['www.wsj.com'],
-        params: ['mod']
-      },
-
-      {
-        domain: 'www.youtube.com',
-        params: ['feature', 'a']
-      }
-    ];
+    const removeParams = removeConfig || defaultJunkParams;
 
     const urlParsed = urlUtil.parse(url, true);
     const query = urlParsed.query;
@@ -1102,7 +920,7 @@ class Aggregator {
     removeParams.forEach((param) => {
       if (typeof param === 'string') {
         delete query[param];
-      } else if(typeof param === 'object') {
+      } else if (typeof param === 'object' && !param['__comment']) {
         const hostname = (typeof urlParsed.hostname === 'string') ?
           [ urlParsed.hostname ] :
           urlParsed.hostname;
