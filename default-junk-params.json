@@ -127,6 +127,12 @@
   },
 
   {
+    "domain": "dieproduktmacher.com",
+    "params": [],
+    "removeHash": true
+  },
+
+  {
     "domain": "docs.google.com",
     "params": ["c", "w"]
   },
