@@ -199,6 +199,18 @@
   },
 
   {
+    "domain": ["my.mindnode.com"],
+    "params": [],
+    "removeHash": true
+  },
+
+  {
+    "domain": ["news.microsoft.com"],
+    "params": [],
+    "removeHash": true
+  },
+
+  {
     "domain": "www.npr.org",
     "params": ["ft", "f"]
   },
