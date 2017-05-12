@@ -1254,15 +1254,15 @@ class Aggregator {
           // Reject null urls.  TODO: investigate further up why this is happening.
           allUrls = R.reject(R.isNil, allUrls);
 
-          // 1-10 ranking.
-          allUrls = this.rankUrls(allUrls);
-
           // Remove dupes.
           winston.debug(`${fnName}: ${allUrls.length} urls before dupe removal.`);
 
           // TODO: uniqWith instead?
           allUrls = R.unionWith(R.eqBy(R.prop('url')), allUrls, oldList);
           winston.debug(`${fnName}: ${allUrls.length} after dupe removal.`);
+
+          // 1-10 ranking.
+          allUrls = this.rankUrls(allUrls);
 
           this._timerEnd(fnName);
           client.set(`${redisNS}${redisIsFetchingKey}`, 0);
