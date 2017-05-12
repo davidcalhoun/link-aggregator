@@ -329,9 +329,11 @@ class Aggregator {
       // Discard ignored words.
       const shouldIgnore = R.find((ignoreWord) => {
         // Append urls to text to simplify regexp logic
-        const searchString = `${url.url} ${url.title} ${url.excerpt}`;
+        const searchString = (typeof url === 'string')
+          ? url
+          : `${url.url} ${url.title} ${url.excerpt}`;
 
-        const matches = searchString.match(new RegExp(ignoreWord, 'gi'));
+        const matches = searchString.match(new RegExp(`\\b${ignoreWord}\\b`, 'gi'));
 
         //if (matches) winston.debug(`Rejecting url due to ignore word "${matches[0]}": ${url.url}`);
 
@@ -451,7 +453,8 @@ class Aggregator {
   }
 
   /**
-   * Scraper: Gets url excerpt and other info.  First checks catch, then fetches only on cache misses.
+   * Scraper: Gets url excerpt and other info.  First checks catch, then fetches only on cache
+   * misses.
    */
   getUrlDetails(url, urlMeta, done) {
     const fnName = `${moduleName}/getUrlDetails`;
@@ -859,7 +862,10 @@ class Aggregator {
 
     // Find each url in tweet, and treat it individually.
     const urlObjs = R.path(['entities', 'urls'], tweetObj);
-    const tweetURLs = R.pluck('expanded_url')(urlObjs);
+    let tweetURLs = R.pluck('expanded_url')(urlObjs);
+
+    // Filter out links which already match ignore words.
+    tweetURLs = this.filterUrlsWithIgnoreWords(tweetURLs, args.ignoreWords);
 
     // Create parallel async functions for each URL present.
     const parallelFns = [];
