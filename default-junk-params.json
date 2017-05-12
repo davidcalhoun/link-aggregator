@@ -9,11 +9,14 @@
   "camp",
   "cid",
   "cm_mmc",
+  "cm_mmca1",
+  "cm_mmca2",
   "country",
   "ecid",
   "email_SHA1_lc",
   "ex_cid",
   "extid",
+  "goal",
   "idg_eid",
   "imm_mid",
   "link_id",
@@ -23,6 +26,7 @@
   "mwrsm",
   "ncid",
   "partnerid",
+  "pcampaignid",
   "postshare",
   "ref",
   "ref_",
@@ -127,6 +131,11 @@
   },
 
   {
+    "domain": "www.dailytelegraph.com.au",
+    "params": ["nk"]
+  },
+
+  {
     "domain": "dieproduktmacher.com",
     "params": [],
     "removeHash": true
@@ -205,6 +214,16 @@
   {
     "domain": "www.pcworld.com",
     "params": ["sf61342414"]
+  },
+
+  {
+    "domain": "play.google.com",
+    "params": ["t"]
+  },
+
+  {
+    "domain": "play.spotify.com",
+    "params": ["play"]
   },
 
   {
