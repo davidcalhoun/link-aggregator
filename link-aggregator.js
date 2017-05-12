@@ -130,9 +130,11 @@ class Aggregator {
     return R.map((category) => {
       let regexp = categories[category];
 
-      if (Array.isArray(regexp)) regexp = regexp.join('|');
+      if (Array.isArray(regexp)) {
+        regexp = regexp.join('\\b|\\b');
+      }
 
-      regexp = new RegExp(`\bregexp\b`, 'gi');
+      regexp = new RegExp(`\\b${regexp}\\b`, 'gi');
 
       return [
         category,
@@ -264,8 +266,10 @@ class Aggregator {
   _getCategoriesFromText(text, categories) {
     const fnName = `${moduleName}/_getCategoriesFromText`;
 
+    //winston.debug(`${fnName}: ${text}`);
+
     let cats = [];
-    const categoriesCopy = categories || [];
+    const categoriesCopy = categories || this.categories || [];
 
     cats = R.filter((category) => text.match(category.keywords.regexp))(categoriesCopy);
 

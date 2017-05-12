@@ -41,34 +41,44 @@ describe('scraper', function() {
   });
 
   describe('_getCategoriesFromText', function() {
-    const categories = [{
-      name: 'Video',
-      keywords: {
-        keywords: ['video'],
-        regexp: /video/gi
-      }
-    }];
+    const categories = {
+      "Video": ["video"]
+    };
 
     it('matches a word in a sentence', () => {
-      const cats = linkAggregator._getCategoriesFromText('something video something', categories);
+      linkAggregator.setCategories(categories);
+      const cats = linkAggregator._getCategoriesFromText('something video something');
       assert.deepEqual(cats, [ 'Video' ]);
     });
 
     it('matches a word in a url', () => {
-      const cats = linkAggregator._getCategoriesFromText('http://video.com', categories);
+      linkAggregator.setCategories(categories);
+      const cats = linkAggregator._getCategoriesFromText('http://video.com');
       assert.deepEqual(cats, [ 'Video' ]);
     });
 
     it('doesnt match a partial word', () => {
-      const categories = [{
-        name: 'Design',
-        keywords: {
-          keywords: ['design'],
-          regexp: /\bdesign\b/gi
-        }
-      }];
-      const cats = linkAggregator._getCategoriesFromText('foofoodesignedfoo', categories);
+      linkAggregator.setCategories({
+        "Design": ["design"]
+      });
+      const cats = linkAggregator._getCategoriesFromText('foofoodesignedfoo');
       assert.deepEqual(cats, []);
+    });
+
+    it('matches a word from complex categories', () => {
+      linkAggregator.setCategories({
+        "Foo": ["foo", "bar", "baz"]
+      });
+      const cats = linkAggregator._getCategoriesFromText('something bar something');
+      assert.deepEqual(cats, [ 'Foo' ]);
+    });
+
+    it('doesnt match partial word with complex categories', () => {
+      linkAggregator.setCategories({
+        "Foo": ["foo", "bar", "baz"]
+      });
+      const cats = linkAggregator._getCategoriesFromText('somethingbarsomething');
+      assert.deepEqual(cats, [ ]);
     });
   });
 });
