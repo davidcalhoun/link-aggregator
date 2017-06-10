@@ -996,7 +996,7 @@ class Aggregator {
 
       // }
 
-      urlObjCopy.rank = this.getURLRank(urlObjCopy, {
+      urlObjCopy.rankRaw = this.getURLRank(urlObjCopy, {
         maxFaves,
         maxRetweets,
         maxMentions,
@@ -1019,12 +1019,12 @@ class Aggregator {
 
     // Sort by rank.
     urlsCopy = R.sortWith([
-      R.descend(R.prop('rank')),
+      R.descend(R.prop('rankRaw')),
       R.descend(R.prop('timestamp'))
     ])(urlsCopy);
 
     // Figure out size of each 10% segment.
-    let urlsCopyRanks = R.pluck('rank')(urlsCopy);
+    let urlsCopyRanks = R.pluck('rankRaw')(urlsCopy);
     urlsCopyRanks = R.uniq(urlsCopyRanks);
     const segmentSize = Math.ceil(urlsCopyRanks.length / 10);
     const segments = [];
@@ -1035,11 +1035,8 @@ class Aggregator {
     }
 
     urlsCopy = urlsCopy.map((urlObj) => {
-      let rank = this.getSegmentPosition(urlObj.rank, segments);
-      return Object.assign({}, urlObj, {
-        rank,
-        rankRaw: urlObj.rank
-      });
+      let rank = this.getSegmentPosition(urlObj.rankRaw, segments);
+      return Object.assign({}, urlObj, { rank });
     });
 
     return urlsCopy;
