@@ -1249,8 +1249,9 @@ class Aggregator {
         return async.parallelLimit(parallelFns, 2, (err, urls) => {
           // Combine with old url objects if present.
           const oldList = lists.oldList || [];
+          const oldListLength = R.path(['length'], oldList) || 0;
 
-          winston.debug(`${fnName}: ${oldList.length} old urls.`);
+          winston.debug(`${fnName}: ${oldListLength} old urls.`);
           winston.debug(`${fnName}: ${urls[0].length} new Pocket urls.`);
           winston.debug(`${fnName}: ${urls[1].length} new Twitter urls.`);
 
