@@ -10,6 +10,36 @@ describe('scraper', function() {
     linkAggregator = new la();
   });
 
+  describe('filterUrlsWithIgnoreWords', function() {
+    it('filters url strings', () => {
+      const urls = [
+        'https://www.nytimes.com/2016/07/29/science/brain-scans-math.html',
+        'https://google.com'
+      ];
+      const ignoreWords = ['nytimes.com'];
+
+      const result = linkAggregator.filterUrlsWithIgnoreWords(urls, ignoreWords);
+
+      assert.deepEqual(result, ['https://google.com']);
+    });
+
+    it('filters url objects', () => {
+      const urls = [
+        {
+          url: 'https://www.nytimes.com/2016/07/29/science/brain-scans-math.html',
+        },
+        {
+          url: 'https://google.com',
+        }
+      ];
+      const ignoreWords = ['nytimes.com'];
+
+      const result = linkAggregator.filterUrlsWithIgnoreWords(urls, ignoreWords);
+
+      assert.deepEqual(result, [ { url: 'https://google.com' } ]);
+    });
+  });
+
   describe('removeJunkURLParams', function() {
     it('preserves hashes by default', () => {
       const removeConfig = [
