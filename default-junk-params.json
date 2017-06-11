@@ -285,6 +285,10 @@
     "params": ["wpisrc", "wpmm", "hpid"]
   },
 
+  {
+    "domain": "webdesignledger.com",
+    "removeHash": true
+  },
 
   {
     "domain": ["www.wsj.com"],
