@@ -329,13 +329,14 @@ class Aggregator {
       // Discard ignored words.
       const shouldIgnore = R.find((ignoreWord) => {
         // Append urls to text to simplify regexp logic
-        const searchString = (typeof url === 'string')
-          ? url
-          : `${url.url} ${url.title} ${url.excerpt}`;
+        const searchString = (typeof url === 'object')
+          ? `${url.url} ${url.title} ${url.excerpt}`
+          : url;
 
         const matches = searchString.match(new RegExp(`\\b${ignoreWord}\\b`, 'gi'));
 
-        //if (matches) winston.debug(`Rejecting url due to ignore word "${matches[0]}": ${url.url}`);
+        if (matches) winston.debug(`Rejecting url due to ignore word "${matches[0]}": \
+${searchString}`);
 
         return matches;
       })(ignoreWords || []);
@@ -515,6 +516,7 @@ class Aggregator {
       // Sanity check.
       if (!response) {
         winston.error(`${fnName}: ${urlCopy} returned no response`);
+        console.log(error, response, body);
 
         // Cache result so we don't waste time processing this in the future.
         client.set(`${redisNS}${urlCopy}`, JSON.stringify(Object.assign({}, urlDetails, {
@@ -760,21 +762,21 @@ class Aggregator {
 
   /**
    * Filters out non-articles (e.g. links to other tweets).
-   * TODO: is this needed anymore?
    */
-  filterNonArticles(urlObjects) {
+  filterNonArticles(urls) {
     const fnName = `${moduleName}/filterNonArticles`;
 
-    const numUrlsBefore = urlObjects.length;
-    const isNonArticle = (urlObj) => {
-      if(!urlObj.url) winston.debug(`missing url`, urlObj);
-      return urlObj.url && urlObj.url.match('twitter.com');
-    }
-    const flattenedUrlObjects = R.reject(isNonArticle, urlObjects);
-    const numUrlsRejected = numUrlsBefore - flattenedUrlObjects.length;
-    winston.debug(`${fnName}: discarded ${numUrlsRejected} non-article urls (tweets only)`);
+    const numUrlsBefore = urls.length;
 
-    return flattenedUrlObjects;
+    const isNonArticle = (url) => {
+      const urlStr = (typeof url === 'object') ? url.url : url;
+      return urlStr.match('twitter.com');
+    }
+    const filteredUrls = R.reject(isNonArticle, urls);
+    const numUrlsRejected = numUrlsBefore - filteredUrls.length;
+    //winston.debug(`${fnName}: discarded ${numUrlsRejected} non-article urls (tweets only)`);
+
+    return filteredUrls;
   }
 
   /**
@@ -863,6 +865,10 @@ class Aggregator {
     // Find each url in tweet, and treat it individually.
     const urlObjs = R.path(['entities', 'urls'], tweetObj);
     let tweetURLs = R.pluck('expanded_url')(urlObjs);
+
+
+    // Filter out non-articles (e.g. tweets)
+    tweetURLs = this.filterNonArticles(tweetURLs);
 
     // Filter out links which already match ignore words.
     tweetURLs = this.filterUrlsWithIgnoreWords(tweetURLs, args.ignoreWords);
