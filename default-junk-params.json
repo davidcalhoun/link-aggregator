@@ -144,7 +144,6 @@
 
   {
     "domain": "dieproduktmacher.com",
-    "params": [],
     "removeHash": true
   },
 
@@ -185,7 +184,6 @@
 
   {
     "domain": "mashable.com",
-    "params": [],
     "removeHash": true
   },
 
@@ -212,13 +210,11 @@
 
   {
     "domain": ["my.mindnode.com"],
-    "params": [],
     "removeHash": true
   },
 
   {
     "domain": ["news.microsoft.com"],
-    "params": [],
     "removeHash": true
   },
 
@@ -273,6 +269,11 @@
   {
     "domain": ["www.reuters.com"],
     "params": ["channelName", "feedName", "feedType", "mod"]
+  },
+
+  {
+    "domain": ["thenextweb.com"],
+    "removeHash": true
   },
 
   {
