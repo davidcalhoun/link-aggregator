@@ -956,7 +956,7 @@ ${searchString}`);
         const domainMatches = param.domain.indexOf(urlParsed.hostname) !== -1;
 
         if (domainMatches) {
-          param.params.forEach(param2 => delete query[param2]);
+          param.params && param.params.forEach(param2 => delete query[param2]);
 
           if (param.removeHash) urlParsed.hash = '';
         }
