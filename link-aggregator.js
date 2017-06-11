@@ -1263,7 +1263,7 @@ ${searchString}`);
 
         return async.parallelLimit(parallelFns, 2, (err, urls) => {
           // Combine with old url objects if present.
-          const oldList = lists.oldList || [];
+          const oldList = R.path(['oldList', 'list'], lists) || [];
           const oldListLength = R.path(['length'], oldList) || 0;
 
           winston.debug(`${fnName}: ${oldListLength} old urls.`);
