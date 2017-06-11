@@ -187,6 +187,8 @@ class Aggregator {
    * https://dev.twitter.com/rest/reference/get/lists/statuses
    */
   _asyncGetTwitterList(args, cb) {
+    const fnName = '_asyncGetTwitterList';
+
     const argsCopy = Object.assign({}, args);
 
     // Tests: return a data stub immediately.
@@ -254,7 +256,15 @@ class Aggregator {
           return cb('Twitter API reply is 0 length - hit a rate limit?');
         }
 
-        argsCopy.max_id = reply[reply.length - 1].id;
+        const lastItem = reply[reply.length - 1] || {};
+        const lastItemID = R.path(['id'], lastItem);
+
+        if (!lastItemID) {
+          winston.error(`${fnName}: could not find id of last tweet in list`);
+          console.log(reply);
+        }
+
+        argsCopy.max_id = lastItemID;
         return this._asyncGetTwitterList(argsCopy, cb);
       }
     );
@@ -1103,11 +1113,13 @@ ${searchString}`);
     const retweetVal = tweetRetweetCount || 0;
     const pocketTimeVal = pocketTimeAdded.length || 0;
 
-    const faveRanking = this.normalizeVal(faveVal, 0, maxFaves, 0, 9);
-    const retweetRanking = this.normalizeVal(retweetVal, 0, maxRetweets, 0, 9);
-    const pocketRanking = this.normalizeVal(pocketTimeVal, 0, maxNumPocketMentions, 0, 9);
+    const faveRanking = parseInt(this.normalizeVal(faveVal, 0, maxFaves, 0, 9));
+    const retweetRanking = parseInt(this.normalizeVal(retweetVal, 0, maxRetweets, 0, 9));
+    const pocketRanking = parseInt(this.normalizeVal(pocketTimeVal, 0, maxNumPocketMentions, 0, 9));
 
     const rankingArr = [pocketRanking, retweetRanking, faveRanking];
+
+    // Join ranks together with string concatenation.
     let ranking = rankingArr.join('');
 
     ranking = parseFloat(ranking) * 1000;
