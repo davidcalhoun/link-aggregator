@@ -989,10 +989,9 @@ ${searchString}`);
   rankUrls(urlObjects) {
     let rankedUrls = [];
 
-    const maxFaves = this.getMaxTweetFavoriteCount(urlObjects);
-    const maxRetweets = this.getMaxTweetRetweetCount(urlObjects);
-    const maxMentions = this.getMaxTweetMentionCount(urlObjects);
-    const maxNumPocketMentions = this.getMaxNumPocketMentions(urlObjects);
+    const faveSegments = this.getObjSegments('tweetFavoriteCount', urlObjects);
+    const retweetSegments = this.getObjSegments('tweetRetweetCount', urlObjects);
+    const pocketSegments = this.getPocketSegments(urlObjects);
 
     urlObjects.forEach((urlObj) => {
       const urlObjCopy = Object.assign({}, urlObj);
@@ -1000,23 +999,10 @@ ${searchString}`);
       // Ignore urls thrown out by a previous filter.
       if (!urlObjCopy.url) return;
 
-      // Find all occurances of this url.
-      // const occuranceObjs = R.filter((a) => a.url === urlObjCopy.url, urlsCopy);
-
-      // if(occuranceObjs.length > 1) {
-      //   // Multiple occurances, so merge.
-      //   const uniqueOccurances = R.uniqBy((a) => {
-      //     return {tweetIDs: a.tweetIDs, source: a.source}
-      //   }, occuranceObjs);
-      // } else {
-
-      // }
-
       urlObjCopy.rankRaw = this.getURLRank(urlObjCopy, {
-        maxFaves,
-        maxRetweets,
-        maxMentions,
-        maxNumPocketMentions
+        faveSegments,
+        retweetSegments,
+        pocketSegments
       });
 
       rankedUrls.push(urlObjCopy);
@@ -1042,20 +1028,45 @@ ${searchString}`);
     // Figure out size of each 10% segment.
     let urlsCopyRanks = R.pluck('rankRaw')(urlsCopy);
     urlsCopyRanks = R.uniq(urlsCopyRanks);
-    const segmentSize = Math.ceil(urlsCopyRanks.length / 10);
-    const segments = [];
-    const segmentLength = 10;
-    for(let a=0, len=segmentLength; a<len; a++) {
-      let segmentVal = urlsCopyRanks[a] || 0;
-      segments.push(segmentVal);
-    }
+    const segments = this.getStandardizedSegments(urlsCopyRanks);
 
     urlsCopy = urlsCopy.map((urlObj) => {
-      let rank = this.getSegmentPosition(urlObj.rankRaw, segments);
+      let rank = this.getSegmentPosition(urlObj.rankRaw, segments) + 1;
       return Object.assign({}, urlObj, { rank });
     });
 
     return urlsCopy;
+  }
+
+  numDiff(a, b) {
+    return a - b;
+  }
+
+  getStandardizedSegments(arr, totalSegments = 10) {
+    let arrSorted = R.sort(this.numDiff, arr);
+
+    if (arrSorted.length < totalSegments) {
+      const arrFillerSize = totalSegments - arrSorted.length;
+      let fillerArr = new Array(arrFillerSize);
+      fillerArr = fillerArr.fill(0);
+      arrSorted = fillerArr.concat(arrSorted);
+    }
+
+    const arrSegmentSize = arrSorted.length / totalSegments;
+    const isSegmentAnInt = Number.isInteger(arrSegmentSize);
+
+    const segments = [];
+    for (let index = arrSegmentSize - 1; index < arrSorted.length; index += arrSegmentSize) {
+      let segmentVal;
+      if (isSegmentAnInt) {
+        segmentVal = arrSorted[index];
+      } else {
+        const indexInt = Math.floor(index);
+        segmentVal = arrSorted[indexInt] + (arrSorted[indexInt] / totalSegments);
+      }
+      segments.push(segmentVal);
+    }
+    return segments;
   }
 
   /**
@@ -1078,10 +1089,10 @@ ${searchString}`);
     }
 
     if (position == -1) {
-      position = 9;
+      position = segmentsSorted.length - 1;
     }
 
-    position++;
+    //position++;
 
     return position;
   }
@@ -1095,33 +1106,31 @@ ${searchString}`);
     const fnName = `${moduleName}/getURLRank`;
 
     const {
-      maxFaves,
-      maxRetweets,
-      maxMentions,
-      maxNumPocketMentions
+      faveSegments,
+      retweetSegments,
+      pocketSegments
     } = args;
 
     const {
       url,
       tweetRetweetCount,
       tweetFavoriteCount,
-      tweetTexts,
       pocketTimeAdded
     } = urlObj;
 
     const faveVal = tweetFavoriteCount || 0;
     const retweetVal = tweetRetweetCount || 0;
-    const pocketTimeVal = pocketTimeAdded.length || 0;
+    const pocketVal = pocketTimeAdded.length || 0;
 
-    const faveRanking = parseInt(this.normalizeVal(faveVal, 0, maxFaves, 0, 9));
-    const retweetRanking = parseInt(this.normalizeVal(retweetVal, 0, maxRetweets, 0, 9));
-    const pocketRanking = parseInt(this.normalizeVal(pocketTimeVal, 0, maxNumPocketMentions, 0, 9));
+    const faveRanking = this.getSegmentPosition(faveVal, faveSegments);
+    const retweetRanking = this.getSegmentPosition(retweetVal, retweetSegments);
+    const pocketRanking = this.getSegmentPosition(pocketVal, pocketSegments);
 
     const rankingArr = [pocketRanking, retweetRanking, faveRanking];
 
     // Join ranks together with string concatenation.
     let ranking = rankingArr.join('');
-
+    
     ranking = parseFloat(ranking) * 1000;
 
     return ranking;
@@ -1173,57 +1182,27 @@ ${searchString}`);
   }
 
   /**
-   * Determines the largest number of Tweet retweets.  Needed for relative ranking of Twitter
-   * links.
+   * Determines the segment distribution of favorites.  Used for ranking, to ensure that numbers
+   * are scaled correctly (e.g. so that a high value such as 1000 [rank 10] doesn't outweigh
+   * everything else, and push all their ranks to 1).
    */
-  getMaxTweetRetweetCount(urlObjects) {
-    const fnName = `${moduleName}/getMaxTweetRetweetCount`;
+  getObjSegments(key, urlObjects) {
+    const fnName = `${moduleName}/getObjSegments`;
     if (urlObjects.length === 0) return 0;
 
-    const sort = R.sortBy((a) => a.tweetRetweetCount || 0);
-    const urlsObjectsSorted = sort(urlObjects);
-    const maxItem = urlsObjectsSorted[urlsObjectsSorted.length - 1];
-
-    if (!maxItem) {
-      winston.error(`${fnName}: maxItem is null`);
-      console.log(JSON.stringify(urlsObjectsSorted, null, 2))
-      return 0;
-    }
-
-    return R.prop('tweetRetweetCount', maxItem) || 0;
+    const arr = R.pluck(key, urlObjects);
+    return this.getStandardizedSegments(arr);
   }
 
-  /**
-   * Determines the largest number of Tweet mentions.  Needed for relative ranking of Twitter
-   * links.
-   */
-  getMaxTweetMentionCount(urlObjects) {
-    const fnName = `${moduleName}/getMaxTweetMentionCount`;
+  getPocketSegments(urlObjects) {
+    const fnName = `${moduleName}/getPocketSegments`;
     if (urlObjects.length === 0) return 0;
 
-    const sort = R.sortBy((a) => (a.tweetTexts && a.tweetTexts.length) || 0);
-    const urlsObjectsSorted = sort(urlObjects);
-    const maxItem = urlsObjectsSorted[urlsObjectsSorted.length - 1];
+    const key = 'pocketTimeAdded';
+    let arr = R.pluck(key, urlObjects);
+    arr = arr.map((ar) => ar.length);
 
-    if (!maxItem) {
-      winston.error(`${fnName}: maxItem is null`);
-      console.log(JSON.stringify(urlsObjectsSorted, null, 2))
-      return 0;
-    }
-
-    return R.path(['tweetTexts', 'length'], maxItem) || 0;
-  }
-
-  /**
-   * Determines the largest number of Pocket mentions.
-   */
-  getMaxNumPocketMentions(urlObjects) {
-    if (urlObjects.length === 0) return 0;
-
-    const sort = R.sortBy((a) => (a.pocketID && a.pocketID.length) || 0);
-    const urlsObjectsSorted = sort(urlObjects);
-    const maxItem = urlsObjectsSorted[urlsObjectsSorted.length - 1];
-    return R.path(['pocketTimeAdded', 'length'], maxItem) || 0;
+    return this.getStandardizedSegments(arr);
   }
 
   /**

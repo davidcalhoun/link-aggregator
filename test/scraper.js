@@ -111,4 +111,60 @@ describe('scraper', function() {
       assert.deepEqual(cats, [ ]);
     });
   });
+
+  describe('getStandardizedSegments', function() {
+    it('produces 10 segments by default 1', () => {
+      const arr = [1,2,3,4,5,6,7,8,9,10];
+      const result = linkAggregator.getStandardizedSegments(arr);
+      const expectedResult = arr;
+
+      assert.deepEqual(result, expectedResult);
+    });
+    it('produces 10 segments by default 2', () => {
+      const arr = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20];
+      const result = linkAggregator.getStandardizedSegments(arr);
+      const expectedResult = [2,4,6,8,10,12,14,16,18,20];
+
+      assert.deepEqual(result, expectedResult);
+    });
+    it('produces 10 segments by default 3', () => {
+      const arr = [1,2,3,4,5,6,7,8,9,10,11];
+      const result = linkAggregator.getStandardizedSegments(arr);
+      const expectedResult = [1.1,2.2,3.3,4.4,5.5,6.6,7.7,8.8,9.9,11];
+
+      assert.deepEqual(result, expectedResult);
+    });
+    it('produces 10 segments by default 4', () => {
+      const arr = [1,2,3,4,5];
+      const result = linkAggregator.getStandardizedSegments(arr);
+      const expectedResult = [0,0,0,0,0,1,2,3,4,5];
+
+      assert.deepEqual(result, expectedResult);
+    });
+    it('produces 10 segments by default 5', () => {
+      const arr = [1,20,30,33,34,35,60,77,88,100,200,500,4000,90000,900000];
+      const result = linkAggregator.getStandardizedSegments(arr);
+      const expectedResult = [1.1,33,36.3,38.5,66,96.8,110,550,4400,990000];
+
+      assert.deepEqual(result, expectedResult);
+    });
+  });
+
+  describe('getSegmentPosition', function() {
+    it('1', () => {
+      const segments = [1.1,33,36.3,38.5,66,96.8,110,550,4400,990000];
+      const result = linkAggregator.getSegmentPosition(10, segments);
+      const expectedResult = 1;
+
+      assert.deepEqual(result, expectedResult);
+    });
+    it('2', () => {
+      const segments = [1.1,33,36.3,38.5,66,96.8,110,550,4400,990000];
+      const result = linkAggregator.getSegmentPosition(1000, segments);
+      const expectedResult = 8;
+
+      assert.deepEqual(result, expectedResult);
+    });
+  });
+
 });
