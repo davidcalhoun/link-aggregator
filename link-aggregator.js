@@ -1245,9 +1245,12 @@ ${searchString}`);
           const oldList = R.path(['oldList', 'list'], lists) || [];
           const oldListLength = R.path(['length'], oldList) || 0;
 
+          const pocketLength = R.path([0, 'length'], urls) || 0;
+          const twitterLength = R.path([1, 'length'], urls) || 0;
+
           winston.debug(`${fnName}: ${oldListLength} old urls.`);
-          winston.debug(`${fnName}: ${urls[0].length} new Pocket urls.`);
-          winston.debug(`${fnName}: ${urls[1].length} new Twitter urls.`);
+          winston.debug(`${fnName}: ${pocketLength} new Pocket urls.`);
+          winston.debug(`${fnName}: ${twitterLength} new Twitter urls.`);
 
           // Combine all lists together.
           let allUrls = R.flatten(urls, oldList);
