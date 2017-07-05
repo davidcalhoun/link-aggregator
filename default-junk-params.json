@@ -141,6 +141,11 @@
     "domain": "www.dailytelegraph.com.au",
     "params": ["nk"]
   },
+  
+  {
+    "domain": "www.designcouncil.org.uk",
+    "removeHash": true
+  },
 
   {
     "domain": "dieproduktmacher.com",
