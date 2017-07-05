@@ -141,7 +141,7 @@
     "domain": "www.dailytelegraph.com.au",
     "params": ["nk"]
   },
-  
+
   {
     "domain": "www.designcouncil.org.uk",
     "removeHash": true
@@ -175,6 +175,11 @@
   {
     "domain": ["huffingtonpost.com"],
     "params": ["section"]
+  },
+
+  {
+    "domain": "indiegogo.com",
+    "removeHash": true
   },
 
   {
