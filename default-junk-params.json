@@ -129,7 +129,7 @@
 
   {
     "domain": "businessinsider.com",
-    "params": ["r", "IR"]
+    "params": ["r", "IR", "mod"]
   },
 
   {
