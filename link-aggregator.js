@@ -1022,6 +1022,8 @@ ${searchString}`);
     // Sort by rank.
     urlsCopy = R.sortWith([
       R.descend(R.prop('rankRaw')),
+      R.descend(R.prop('tweetRetweetCount')),
+      R.descend(R.prop('tweetFavoriteCount')),
       R.descend(R.prop('timestamp'))
     ])(urlsCopy);
 
