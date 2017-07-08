@@ -1,4 +1,5 @@
 const assert = require('assert');
+const cheerio = require('cheerio');
 
 describe('scraper', function() {
   const assert = require('assert');
@@ -167,4 +168,77 @@ describe('scraper', function() {
     });
   });
 
+
+  describe('getTwitterAuthor', function() {
+    let $;
+    const expectedResult = 'twitteruser';
+
+    it('unsecure http link', () => {
+      const body = `<li>
+        <a href="http://twitter.com/twitteruser" title="Follow on Twitter">
+          <i class="fa fa-fw fa-twitter"></i>
+        </a>
+      </li>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getTwitterAuthor($);
+
+      assert.deepEqual(result, expectedResult);
+    });
+
+    it('secure https link', () => {
+      const body = `<li>
+        <a href="https://twitter.com/twitteruser" title="Follow on Twitter">
+          <i class="fa fa-fw fa-twitter"></i>
+        </a>
+      </li>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getTwitterAuthor($);
+
+      assert.deepEqual(result, expectedResult);
+    });
+
+    it('trailing slash', () => {
+      const body = `<li>
+        <a href="https://twitter.com/twitteruser/" title="Follow on Twitter">
+          <i class="fa fa-fw fa-twitter"></i>
+        </a>
+      </li>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getTwitterAuthor($);
+
+      assert.deepEqual(result, expectedResult);
+    });
+
+    it('ignores status tweets', () => {
+      const body = `<li>
+        <a href="https://twitter.com/twitteruser/status/883717424482209796" title="Follow on Twitter">
+          <i class="fa fa-fw fa-twitter"></i>
+        </a>
+      </li>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getTwitterAuthor($);
+
+      assert.deepEqual(result, '');
+    });
+
+    it('twitter card - creator', () => {
+      const body = `<li>
+        <meta name="twitter:creator" content="@twitteruser">
+      </li>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getTwitterAuthor($);
+
+      assert.deepEqual(result, expectedResult);
+    });
+
+    it('twitter card - site', () => {
+      const body = `<li>
+        <meta name="twitter:site" content="@twitteruser">
+      </li>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getTwitterAuthor($);
+
+      assert.deepEqual(result, expectedResult);
+    });
+  });
 });

@@ -696,17 +696,35 @@ ${searchString}`);
    * @joeschmoe").
    */
   getTwitterAuthor($) {
-    let author;
+    let author = '';
 
-    const twitterCreatorTag = $('meta[name="twitter:creator"]');
-    author = twitterCreatorTag.attr('content');
+    const twitterLinkTag = $('a[href^="https://twitter.com/"], a[href^="http://twitter.com/"]');
+
+    if (twitterLinkTag) {
+      author = twitterLinkTag.attr('href');
+
+      if (author) {
+        author = author.split('twitter.com/')[1] || '';
+
+        // Ignore links to tweets.
+        if (author.match('/status/')) author = '';
+      }
+    }
+
+    if (!author) {
+      const twitterCreatorTag = $('meta[name="twitter:creator"]');
+      author = twitterCreatorTag.attr('content');
+    }
 
     if (!author) {
       const twitterSiteTag = $('meta[name="twitter:site"]');
       author = twitterSiteTag.attr('content');
     }
 
-    return author || '';
+    if (!author) author = '';
+    author = author.replace(/\/|@/g, '');
+
+    return author;
   }
 
   /**
