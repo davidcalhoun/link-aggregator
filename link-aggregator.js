@@ -516,8 +516,9 @@ ${searchString}`);
 
     let urlCopy = this.removeJunkURLParams(url);
 
+    // TODO: add functionality for retrying sites that may be overloaded.
     const requestOptions = {
-      timeout: 8000
+      timeout: 15000
     };
 
     request(urlCopy, requestOptions, (error, response, body) => {
