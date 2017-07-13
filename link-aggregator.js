@@ -698,8 +698,8 @@ ${searchString}`);
   getTwitterAuthor($) {
     let author = '';
 
+    // First look for link tag.
     const twitterLinkTag = $('a[href^="https://twitter.com/"], a[href^="http://twitter.com/"]');
-
     if (twitterLinkTag) {
       author = twitterLinkTag.attr('href');
 
@@ -711,17 +711,21 @@ ${searchString}`);
       }
     }
 
+    // Next look for a Twitter creator card.
     if (!author) {
       const twitterCreatorTag = $('meta[name="twitter:creator"]');
       author = twitterCreatorTag.attr('content');
     }
 
+    // Next look for a Twitter site card.
     if (!author) {
       const twitterSiteTag = $('meta[name="twitter:site"]');
       author = twitterSiteTag.attr('content');
     }
 
     if (!author) author = '';
+
+    // Strip out unwanted characters.
     author = author.replace(/\/|@/g, '');
 
     return author;
