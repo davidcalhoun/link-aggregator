@@ -1,31 +1,44 @@
 [
   { "__comment": "Misc" },
+  "__prclt",
+  "__s",
+  "_branch_match_id",
   "_lrsc",
   "_mc",
   "abg",
   "abt",
   "aff",
   "app",
+  "BackURL",
+  "bcsi-ac-ecec8fb75a0745f8",
   "camp",
+  "campaign",
   "cid",
   "cm_mmc",
   "cm_mmca1",
   "cm_mmca2",
   "country",
+  "dcmp",
   "ecid",
   "email_SHA1_lc",
   "ex_cid",
   "extid",
+  "gif",
   "goal",
+  "id_externo_rsoc",
   "idg_eid",
   "imm_mid",
   "intcmp",
+  "ito",
   "link_id",
   "linkCode",
   "linkId",
+  "locale",
   "LSD",
+  "mod",
   "mwrsm",
   "ncid",
+  "ocid",
   "partnerid",
   "pcampaignid",
   "postshare",
@@ -44,8 +57,12 @@
   "sc_geo",
   "sc_outcome",
   "sc_publisher",
+  "scid",
+  "sdid",
+  "set",
   "share",
   "shared",
+  "slreturn",
   "source",
   "source_code",
   "sp_ref",
@@ -56,6 +73,7 @@
   "tse_id",
   "ttl",
   "via",
+  "wt.mc_id",
   "xid",
 
   { "__comment": "?" },
@@ -112,6 +130,11 @@
   {
     "domain": "www.aclu.org",
     "params": ["redirect", "ms"]
+  },
+
+  {
+    "domain": "adobe.com",
+    "params": ["mv"]
   },
 
   {
@@ -179,6 +202,7 @@
 
   {
     "domain": "indiegogo.com",
+    "params": ["i", "r"],
     "removeHash": true
   },
 
