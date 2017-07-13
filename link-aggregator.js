@@ -737,12 +737,20 @@ ${searchString}`);
   getPageTitle($) {
     let title;
 
+    // First check for open graph title.
     const ogTitleTag = $('meta[property="og:title"]');
     title = ogTitleTag.attr('content');
 
+    // Next check for Twitter card.
+    if (!title) {
+      const twitterTitleTag = $('meta[name="twitter:title"]');
+      title = twitterTitleTag.attr('content');
+    }
+    
+    // Next check for good old fashioned page title.
     if (!title) {
       const titleTag = $('title');
-      title = titleTag.text().trim();
+      title = titleTag.first().text().trim();
     }
 
     return title || '';
