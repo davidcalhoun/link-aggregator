@@ -5,6 +5,7 @@
   "_branch_match_id",
   "_lrsc",
   "_mc",
+  "1197",
   "abg",
   "abt",
   "aff",
@@ -23,6 +24,7 @@
   "email_SHA1_lc",
   "ex_cid",
   "extid",
+  "gh_src",
   "gif",
   "goal",
   "id_externo_rsoc",
@@ -46,6 +48,7 @@
   "ref_",
   "referer",
   "referrer",
+  "refresh",
   "refURL",
   "rf",
   "rref",
@@ -68,6 +71,7 @@
   "sp_ref",
   "sr",
   "src",
+  "srid",
   "tid",
   "trackId",
   "tse_id",
@@ -141,7 +145,7 @@
     "domain": ["www.amazon.com", "www.amazon.co.uk", "smile.amazon.com"],
     "params": [
       "qid", "keywords", "creativeASIN", "ie", "tag", "ref_", "sr", "psc", "_encoding", "refRID",
-      "linkCode"
+      "linkCode", "creative", "pd_rd_i", "pd_rd_r", "pd_rd_w", "pd_rd_wg"
     ]
   },
 
