@@ -17,6 +17,10 @@ const defaultJunkParams = require('./default-junk-params');
 
 winston.level = 'debug';
 
+const msInAWeek = 604800000;
+const msInAMonth = 2592000000;
+const msInThreeMonths = msInAMonth * 3;
+
 const client = redis.createClient();
 
 // Keep track of module name for logging purposes.
@@ -47,8 +51,6 @@ const request = origRequest.defaults({
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36'
   }
 });
-
-const msInAWeek = 7 * 24 * 60 * 60 * 1000;
 
 // For communicating with proxy in dev mode: enables receiving data even with self-signed SSL certs.
 // TODO: look into if this is still needed.
@@ -713,7 +715,10 @@ ${searchString}`);
         author = author.split('twitter.com/')[1] || '';
 
         // Ignore links to tweets.
-        if (author.match('/status/')) author = '';
+        const isTweet = author.match('/status/');
+        const isIntent = author.match(/intent\//i);
+
+        if (isTweet || isIntent) author = '';
       }
     }
 
@@ -828,10 +833,9 @@ ${searchString}`);
 
   /**
    * Filters out old articles.
-   * TODO: merge with filterOldUrls
    */
 
-  filterStaleUrls(urlObjects, prop = 'timestamp', expiry = msInAWeek) {
+  filterStaleUrls(urlObjects, prop = 'timestamp', expiry = msInThreeMonths) {
     const fnName = `${moduleName}/filterStaleUrls`;
 
     const numUrlsBefore = urlObjects.length;
@@ -1376,8 +1380,7 @@ ${searchString}`);
 
     this._timerStart(fnName);
 
-    const msInAMonth = 2592000000;
-    const maxAgeTimestampMS = Date.now() - msInAMonth;
+    const maxAgeTimestampMS = Date.now() - msInThreeMonths;
     const maxAgeTimestampS = maxAgeTimestampMS / 1000;
 
     const fetchPocket = fetchAction(apiUrl, {
