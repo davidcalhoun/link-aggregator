@@ -791,19 +791,32 @@ ${searchString}`);
 
     // Fallback to scraping the first paragraph.
     if (!excerpt) {
+      console.log(222)
       // Find the first paragraph containing more than 20 words, then use that as an excerpt.
       // Note: don't use fat arrow here because 'this' context needs to NOT be outer closure
       // context.
       const paragraphs = $('*:not(aside) p');
       paragraphs.each(function processParagraph() {
         // TODO: DON'T traverse ALL ps
-        if (!excerpt && $(this).text().split(/\s+/).length > 20) {
+        if (!excerpt && $(this).text().split(/\s+/).length > 10) {
           excerpt = $(this).text();
         }
+        console.log(2223, excerpt)
       });
     }
 
     if (!excerpt) return '';
+
+    // Strip out HTML, plus preserve when needed.
+    console.log(22266622, excerpt)
+    excerpt = excerpt.replace(/(?!(&lt;a)|(<a))(&lt;|<)(?:\s*)?/gi, '--lt--')
+    excerpt = excerpt.replace(/&gt;|>/gi, '--gt--');
+    console.log(222666, excerpt)
+    const $$ = cheerio.load(`<div>${excerpt}</div>`);
+    excerpt = $$('div').text();
+    excerpt = excerpt.replace(/--lt--/gi, '&lt;');
+    excerpt = excerpt.replace(/--gt--/gi, '&gt;');
+    console.log(2224, excerpt)
 
     // Trim excerpt.
     const maxLength = 200;

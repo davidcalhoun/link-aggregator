@@ -168,6 +168,26 @@ describe('scraper', function() {
     });
   });
 
+  describe('getPageExcerpt', function() {
+    let $;
+
+    it('strips HTML', () => {
+      const expectedResult = 'foo foo bar bar';
+      const body = `<meta property="og:description" content="${expectedResult}&lt;a href=&quot;https://www.reddit.co" />`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getPageExcerpt($);
+
+      assert.deepEqual(result, expectedResult);
+    });
+
+    it('preserves instructional HTML', () => {
+      const body = `<body><p>to provide clarity on how web loading primitives (like <a href="example.com"><strong>&lt;link rel=“preload”&gt;</strong>)</a></p></body>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getPageExcerpt($);
+
+      assert.deepEqual(result, 'to provide clarity on how web loading primitives (like &lt;link rel=“preload”&gt;)');
+    });
+  });
 
   describe('getTwitterAuthor', function() {
     let $;
