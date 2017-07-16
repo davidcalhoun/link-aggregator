@@ -707,7 +707,7 @@ ${searchString}`);
     let author = '';
 
     // First look for link tag.
-    const twitterLinkTag = $('a[href^="https://twitter.com/"], a[href^="http://twitter.com/"]');
+    const twitterLinkTag = $('a[href*="twitter.com"]');
     if (twitterLinkTag) {
       author = twitterLinkTag.attr('href');
 

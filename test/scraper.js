@@ -212,6 +212,29 @@ describe('scraper', function() {
       });
     });
 
+    it('protocol-less url', () => {
+      const body = `<li>
+        <a href="//twitter.com/twitteruser" title="Follow on Twitter">
+          <i class="fa fa-fw fa-twitter"></i>
+        </a>
+      </li>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getTwitterAuthor($);
+
+      assert.deepEqual(result, expectedResult);
+    });
+
+    it('protocol-less url 2', () => {
+      const body = `<li>
+        <a href="twitter.com/twitteruser" title="Follow on Twitter">
+          <i class="fa fa-fw fa-twitter"></i>
+        </a>
+      </li>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getTwitterAuthor($);
+
+      assert.deepEqual(result, expectedResult);
+    });
 
     it('unsecure http link', () => {
       const body = `<li>
