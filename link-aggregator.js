@@ -1256,7 +1256,7 @@ ${searchString}`);
 
     const key = 'pocketTimeAdded';
     let arr = R.pluck(key, urlObjects);
-    arr = arr.map((ar) => ar.length);
+    arr = arr.map((ar) => R.prop('length', ar));
 
     return this.getStandardizedSegments(arr);
   }
