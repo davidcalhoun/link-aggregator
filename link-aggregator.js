@@ -22,6 +22,9 @@ const client = redis.createClient();
 // Keep track of module name for logging purposes.
 const moduleName = 'link-aggregator';
 
+// Flag for cached urls that were removed (e.g by the user) and should be ignored.
+const urlRemovedFlagKey = 'isRemoved';
+
 // Namespace prefix for organizing Redis data.
 let redisNS = 'la-';
 
@@ -488,6 +491,9 @@ ${searchString}`);
 
         // Reject if url is an invalid content type (pdf, jpeg, etc) or had some error (404, etc).
         if (parsedReply.scraperError) return done();
+
+        // Reject if url has been removed previously (e.g. by the user).
+        if (parsedReply.urlRemovedFlagKey) return done();
 
         // Follow cached redirect if needed.
         if (parsedReply.redirect) {
