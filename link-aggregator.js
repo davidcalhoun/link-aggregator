@@ -495,7 +495,7 @@ ${searchString}`);
         if (parsedReply.scraperError) return done();
 
         // Reject if url has been removed previously (e.g. by the user).
-        if (parsedReply.urlRemovedFlagKey) return done();
+        if (parsedReply[urlRemovedFlagKey]) return done();
 
         // Follow cached redirect if needed.
         if (parsedReply.redirect) {
