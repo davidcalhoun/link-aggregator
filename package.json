@@ -6,7 +6,7 @@
   "scripts": {
     "proxy": "node proxy",
     "test": "./node_modules/mocha/bin/mocha --check-leaks --use_strict",
-    "patch": "npm version patch && npm publish && git push"
+    "patch": "git push && npm version patch && npm publish && git push"
   },
   "repository": {
     "type": "git",
