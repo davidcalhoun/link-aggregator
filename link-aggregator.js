@@ -719,9 +719,17 @@ ${searchString}`);
 
         // Ignore links to tweets.
         const isTweet = author.match('/status/');
-        const isIntent = author.match(/intent\//i);
 
-        if (isTweet || isIntent) author = '';
+        // Parse screen_name from Twitter intents.
+        const isIntent = author.match(/intent\//i);
+        if (isIntent) {
+          const parsedIntent = urlUtil.parse(author, true);
+          author = R.path(['query', 'screen_name'], parsedIntent) ||
+            R.path(['query', 'via'], parsedIntent) ||
+            '';
+        }
+
+        if (isTweet) author = '';
       }
     }
 
@@ -1427,7 +1435,7 @@ ${searchString}`);
       timeout
     ])
     .then((pocketAPIResponse) => {
-      this._timerEnd(fnName);
+      this._timerEnd(fnName);     
 
       return this.pocketToURLs(pocketAPIResponse, {
         tag,

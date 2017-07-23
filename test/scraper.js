@@ -194,8 +194,8 @@ describe('scraper', function() {
     const expectedResult = 'twitteruser';
 
     describe('intents', () => {
-      it('ignores user intents', () => {
-        const body = `<a target="_blank" href="https://twitter.com/intent/user?screen_name=creativebloq" class="icon icon-circle icon-twitter"></a>
+      it('ignores user intent missing username', () => {
+        const body = `<a target="_blank" href="https://twitter.com/intent/user?" class="icon icon-circle icon-twitter"></a>
   </div>`;
         $ = cheerio.load(body);
         const result = linkAggregator.getTwitterAuthor($);
@@ -203,12 +203,29 @@ describe('scraper', function() {
         assert.deepEqual(result, '');
       });
 
-      it('ignores tweet intents', () => {
-        const body = `<a href="https://twitter.com/intent/tweet?hashtags=codebrahma&original_referer=http://www.codebramha.com/&text=Check%20out%20this%20amazing%20post%20:%20&tw_p=tweetbutton&url=https://codebrahma.com/structuring-async-operations-react-redux-applications/&via=codebrahma" class="social twitter" title="Share on Twitter" target="_blank"><i class="fa fa-twitter"></i></a>`;
+      it('ignores tweet intent missing username', () => {
+        const body = `<a href="https://twitter.com/intent/tweet?hashtags=codebrahma&original_referer=http://www.codebramha.com/&text=Check%20out%20this%20amazing%20post%20:%20&tw_p=tweetbutton&url=https://codebrahma.com/structuring-async-operations-react-redux-applications/" class="social twitter" title="Share on Twitter" target="_blank"><i class="fa fa-twitter"></i></a>`;
         $ = cheerio.load(body);
         const result = linkAggregator.getTwitterAuthor($);
 
         assert.deepEqual(result, '');
+      });
+
+      it('extracts username from user intent', () => {
+        const body = `<a target="_blank" href="https://twitter.com/intent/user?screen_name=creativebloq" class="icon icon-circle icon-twitter"></a>
+  </div>`;
+        $ = cheerio.load(body);
+        const result = linkAggregator.getTwitterAuthor($);
+
+        assert.deepEqual(result, 'creativebloq');
+      });
+
+      it('extracts username from tweet intent', () => {
+        const body = `<a href="https://twitter.com/intent/tweet?hashtags=codebrahma&original_referer=http://www.codebramha.com/&text=Check%20out%20this%20amazing%20post%20:%20&tw_p=tweetbutton&url=https://codebrahma.com/structuring-async-operations-react-redux-applications/&via=codebrahma" class="social twitter" title="Share on Twitter" target="_blank"><i class="fa fa-twitter"></i></a>`;
+        $ = cheerio.load(body);
+        const result = linkAggregator.getTwitterAuthor($);
+
+        assert.deepEqual(result, 'codebrahma');
       });
     });
 
