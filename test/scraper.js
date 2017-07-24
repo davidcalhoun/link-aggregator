@@ -193,6 +193,19 @@ describe('scraper', function() {
     let $;
     const expectedResult = 'twitteruser';
 
+    it('ignores share links', () => {
+      const body = `<a
+    class="icon-twitter"
+    href="https://twitter.com/share?text=8%20things%20to%20learn%20in%20React%20before%20using%20Redux by %40rwieruch %23ReactJs&url=https%3a%2f%2fwww.robinwieruch.de%2flearn-react-before-using-redux%2f"
+    onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+    <i class="fa fa-twitter"></i>
+</a>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getTwitterAuthor($);
+
+      assert.deepEqual(result, '');
+    });
+
     describe('intents', () => {
       it('ignores user intent missing username', () => {
         const body = `<a target="_blank" href="https://twitter.com/intent/user?" class="icon icon-circle icon-twitter"></a>
