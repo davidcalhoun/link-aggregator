@@ -237,13 +237,13 @@
 
   {
     "domain": ["medium.com"],
-    "params": ["gi"],
+    "params": ["gi", "sectionName"],
     "removeHash": true
   },
 
   {
     "domain": ["medium.freecodecamp.com"],
-    "params": ["r"]
+    "params": ["r", "sectionName"]
   },
 
   {
