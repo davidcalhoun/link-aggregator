@@ -717,8 +717,11 @@ ${searchString}`);
       if (author) {
         author = author.split('twitter.com/')[1] || '';
 
-        // Ignore links to tweets.
+        // Ignore tweets, share, etc.
         const isTweet = author.match('/status/');
+        const isShare = author.match('/share?');
+        const isSearch = author.match('/search?');
+        const isHome = author.match('/home?');
 
         // Parse screen_name from Twitter intents.
         const isIntent = author.match(/intent\//i);
@@ -729,7 +732,7 @@ ${searchString}`);
             '';
         }
 
-        if (isTweet) author = '';
+        if (isTweet || isShare || isSearch || isHome) author = '';
       }
     }
 
