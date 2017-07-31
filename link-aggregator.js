@@ -753,6 +753,9 @@ ${searchString}`);
     // Strip out unwanted characters.
     author = author.replace(/\/|@/g, '');
 
+    // Strip out junk url params
+    author = author.split('?')[0];
+
     return author;
   }
 

@@ -193,6 +193,14 @@ describe('scraper', function() {
     let $;
     const expectedResult = 'twitteruser';
 
+    it('ignores junk url params', () => {
+      const body = `<li><a href='http://www.twitter.com/androidcentral?utm_medium=burger&utm_campaign=navigation&utm_source=ac'><span class='icomoon-twitter'></span></a></li>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getTwitterAuthor($);
+
+      assert.deepEqual(result, 'androidcentral');
+    });
+
     it('ignores share links', () => {
       const body = `<a
     class="icon-twitter"
