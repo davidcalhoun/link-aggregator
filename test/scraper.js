@@ -193,6 +193,14 @@ describe('scraper', function() {
     let $;
     const expectedResult = 'twitteruser';
 
+    it('handles hashbangs', () => {
+      const body = `<a class="icon-twitter" href="http://twitter.com/#!/akamaidev"></a>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getTwitterAuthor($);
+
+      assert.deepEqual(result, 'akamaidev');
+    });
+
     it('ignores junk url params', () => {
       const body = `<li><a href='http://www.twitter.com/androidcentral?utm_medium=burger&utm_campaign=navigation&utm_source=ac'><span class='icomoon-twitter'></span></a></li>`;
       $ = cheerio.load(body);
@@ -214,6 +222,15 @@ describe('scraper', function() {
       assert.deepEqual(result, '');
     });
 
+    it('gets author from share link', () => {
+      const body = `<a href="https://twitter.com/share?text=Women%20Saved%20the%20Affordable%20Care%20Act&amp;via=GQ&amp;url=http%3A%2F%2Fwww.gq.com%2Fstory%2Fwomen-saved-the-affordable-care-act" data-pin-do="" target="_blank" aria-label="Twitter" data-reactid="86"><span class="icon" data-reactid="87"></span><span class="label" data-reactid="88">Twitter</span></a>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getTwitterAuthor($);
+
+      assert.deepEqual(result, 'GQ');
+    });
+
+
     describe('intents', () => {
       it('ignores user intent missing username', () => {
         const body = `<a target="_blank" href="https://twitter.com/intent/user?" class="icon icon-circle icon-twitter"></a>
@@ -222,6 +239,23 @@ describe('scraper', function() {
         const result = linkAggregator.getTwitterAuthor($);
 
         assert.deepEqual(result, '');
+      });
+
+      it('ignores user intent missing username 2', () => {
+        const body = `<a href="//twitter.com/search?q=levelsio%20ARKit%20OR%20AR&src=typd">AR apps</a>`;
+        $ = cheerio.load(body);
+        const result = linkAggregator.getTwitterAuthor($);
+
+        assert.deepEqual(result, '');
+      });
+
+      it('ignores first intent and is able to extract name from second link', () => {
+        const body = `<a href="//twitter.com/search?q=levelsio%20ARKit%20OR%20AR&src=typd">AR apps</a>
+<a href="//twitter.com/levelsio">Twitter</a>`;
+        $ = cheerio.load(body);
+        const result = linkAggregator.getTwitterAuthor($);
+
+        assert.deepEqual(result, 'levelsio');
       });
 
       it('ignores tweet intent missing username', () => {

@@ -710,31 +710,44 @@ ${searchString}`);
     let author = '';
 
     // First look for link tag.
-    const twitterLinkTag = $('a[href*="twitter.com"]:not([href*="twitter.com/share"])');
-    if (twitterLinkTag) {
-      author = twitterLinkTag.attr('href');
+    const twitterLinkTags = $('a[href*="twitter.com"]');
 
-      if (author) {
-        author = author.split('twitter.com/')[1] || '';
+    twitterLinkTags.each((index, linkTag) => {
+      // Author already found, return early.
+      if (author) return;
 
-        // Ignore tweets, share, etc.
-        const isTweet = author.match('/status/');
-        const isShare = author.match('/share?');
-        const isSearch = author.match('/search?');
-        const isHome = author.match('/home?');
+      if (linkTag) {
+        let href = linkTag.attribs.href || '';
 
-        // Parse screen_name from Twitter intents.
-        const isIntent = author.match(/intent\//i);
-        if (isIntent) {
-          const parsedIntent = urlUtil.parse(author, true);
-          author = R.path(['query', 'screen_name'], parsedIntent) ||
-            R.path(['query', 'via'], parsedIntent) ||
-            '';
+        if (!author && href) {
+          // Fix for protocol-less urls (url util has problems with them).
+          const hasProtocol = !!href.match(/http:\/\/|https:\/\//);
+          if (!hasProtocol) {
+            href = href.replace(/(\/\/)?twitter.com/, `https://twitter.com`);
+          }
+
+          // Fix for hashbangs.
+          href = href.replace(/#\!\//, '');
+
+          // Ignore tweets, share, etc.
+          const isTweet = href.match('/status/');
+          const isShare = href.match('/share?');
+          const isSearch = href.match('/search?');
+          const isHome = href.match('/home?');
+          const isIntent = href.match(/intent\//i);
+
+          // See if we can extract a Twitter name.
+          const parsedURL = urlUtil.parse(href, true);
+          if (isIntent || isShare || isSearch || isHome) {
+            author = R.path(['query', 'screen_name'], parsedURL) ||
+              R.path(['query', 'via'], parsedURL) ||
+              '';
+          } else if (!isTweet) {
+            author = R.path(['pathname'], parsedURL);
+          }
         }
-
-        if (isTweet || isShare || isSearch || isHome) author = '';
       }
-    }
+    });
 
     // Next look for a Twitter creator card.
     if (!author) {
@@ -748,13 +761,15 @@ ${searchString}`);
       author = twitterSiteTag.attr('content');
     }
 
-    if (!author) author = '';
+    if (!author) {
+      author = '';
+    } else {
+      // Strip out unwanted characters.
+      author = author.replace(/\/|@/g, '');
 
-    // Strip out unwanted characters.
-    author = author.replace(/\/|@/g, '');
-
-    // Strip out junk url params
-    author = author.split('?')[0];
+      // Strip out junk url params
+      author = author.split('?')[0];
+    }
 
     return author;
   }
