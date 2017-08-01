@@ -197,6 +197,7 @@ describe('scraper', function() {
     describe('meta tags', () => {
       const metas = [
         {itemprop: 'datePublished'},
+        {itemprop: 'dateModified'},
         {property: 'article:published_time'},
         {name: 'revised'},
         {name: 'date'},
@@ -226,6 +227,14 @@ describe('scraper', function() {
       const result = linkAggregator.getPublishedTime($);
       const resultS = parseInt(result / 1000);
       assert.deepEqual(resultS, 1500015600);
+    });
+
+    it('dateline class', () => {
+      const body = `<span class="dateline">Jul. 31, 2017 12:47 AM</span>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getPublishedTime($);
+      const resultS = parseInt(result / 1000);
+      assert.deepEqual(resultS, 1501487220);
     });
 
     it('post-meta class', () => {

@@ -677,7 +677,7 @@ ${searchString}`);
     time = publishedTag.attr('content');
 
     if (!time) {
-      const metas = $(`[itemprop=datePublished], [property="article:published_time"], [name="revised"], [name="date"], [name="last-modified"], [name="last-updated"], [name="search_date"], [property="datePublished"]`);
+      const metas = $(`[itemprop=datePublished], [itemprop=dateModified], [property="article:published_time"], [name="revised"], [name="date"], [name="last-modified"], [name="last-updated"], [name="search_date"], [property="datePublished"]`);
       time = metas.attr('content');
     }
 
