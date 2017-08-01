@@ -189,24 +189,120 @@ describe('scraper', function() {
     });
   });
 
+  describe('getPublishedTime', () => {
+    let $;
+
+    // General note: times not ms-precise due to https://github.com/substack/parse-messy-time/issues/10
+
+    describe('meta tags', () => {
+      const metas = [
+        {itemprop: 'datePublished'},
+        {property: 'article:published_time'},
+        {name: 'revised'},
+        {name: 'date'},
+        {name: 'last-modified'},
+        {name: 'last-updated'},
+        {name: 'search_date'},
+        {property: 'datePublished'}
+      ];
+
+      metas.forEach((meta) => {
+        const firstKey = Object.keys(meta)[0];
+        const firstVal = meta[firstKey];
+
+        it(`${firstKey}/${firstVal}`, () => {
+          const body = `<meta ${firstKey}="${firstVal}" content="2017-07-31 17:15:41 +0000">`;
+          $ = cheerio.load(body);
+          const result = linkAggregator.getPublishedTime($);
+          const resultS = parseInt(result / 1000);
+          assert.deepEqual(resultS, 1501521341);
+        });
+      });
+    });
+
+    it('nested date class', () => {
+      const body = `<div class="date"><span>14 July 2017</span></div>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getPublishedTime($);
+      const resultS = parseInt(result / 1000);
+      assert.deepEqual(resultS, 1500015600);
+    });
+
+    it('post-meta class', () => {
+      const body = `<div class="post-meta">Jul 17, 2017 • foobar</div>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getPublishedTime($);
+      const resultS = parseInt(result / 1000);
+      assert.deepEqual(resultS, 1500274800);
+    });
+
+    it('published-at class', () => {
+      const body = `<span class="published-at">Jul 23, 2017</span>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getPublishedTime($);
+      const resultS = parseInt(result / 1000);
+      assert.deepEqual(resultS, 1500793200);
+    });
+
+    it('published class', () => {
+      const body = `<abbr class="published" title="2017-07-19T08:02:47-07:00">July 19, 2017</abbr>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getPublishedTime($);
+      const resultS = parseInt(result / 1000);
+      assert.deepEqual(resultS, 1500447600);
+    });
+
+    it('matches <time> tag', () => {
+      const body = `<time>July 19, 2017</time>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getPublishedTime($);
+      const resultS = parseInt(result / 1000);
+      assert.deepEqual(resultS, 1500447600);
+    });
+
+    it('matches <time> tag with date not parsible in native JS', () => {
+      const body = `<div class="banner__extra">Published on: <time datetime="20170727">27th July 2017 at 3pm</time></div>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getPublishedTime($);
+      const resultS = parseInt(result / 1000);
+      assert.deepEqual(resultS, 1501192800);
+    });
+
+    it('matches non-meta tags', () => {
+      const body = `<span class="pub-date" itemprop="datePublished" content="2017-07-21T03:00-0700">Jul 21, 2017</span>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getPublishedTime($);
+      const resultS = parseInt(result / 1000);
+      assert.deepEqual(resultS, 1500631200);
+    });
+
+    it('matches class containing "date"', () => {
+      const body = `<span class="byline__date">28 Jul 2017</span>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getPublishedTime($);
+      const resultS = parseInt(result / 1000);
+      assert.deepEqual(resultS, 1501225200);
+    });    
+  })
+
   describe('getTwitterAuthor', function() {
     let $;
     const expectedResult = 'twitteruser';
 
     it('handles hashbangs', () => {
-      const body = `<a class="icon-twitter" href="http://twitter.com/#!/akamaidev"></a>`;
+      const body = `<a class="icon-twitter" href="http://twitter.com/#!/twitteruser"></a>`;
       $ = cheerio.load(body);
       const result = linkAggregator.getTwitterAuthor($);
 
-      assert.deepEqual(result, 'akamaidev');
+      assert.deepEqual(result, expectedResult);
     });
 
     it('ignores junk url params', () => {
-      const body = `<li><a href='http://www.twitter.com/androidcentral?utm_medium=burger&utm_campaign=navigation&utm_source=ac'><span class='icomoon-twitter'></span></a></li>`;
+      const body = `<li><a href='http://www.twitter.com/twitteruser?utm_medium=burger&utm_campaign=navigation&utm_source=ac'><span class='icomoon-twitter'></span></a></li>`;
       $ = cheerio.load(body);
       const result = linkAggregator.getTwitterAuthor($);
 
-      assert.deepEqual(result, 'androidcentral');
+      assert.deepEqual(result, expectedResult);
     });
 
     it('ignores share links', () => {
@@ -223,11 +319,11 @@ describe('scraper', function() {
     });
 
     it('gets author from share link', () => {
-      const body = `<a href="https://twitter.com/share?text=Women%20Saved%20the%20Affordable%20Care%20Act&amp;via=GQ&amp;url=http%3A%2F%2Fwww.gq.com%2Fstory%2Fwomen-saved-the-affordable-care-act" data-pin-do="" target="_blank" aria-label="Twitter" data-reactid="86"><span class="icon" data-reactid="87"></span><span class="label" data-reactid="88">Twitter</span></a>`;
+      const body = `<a href="https://twitter.com/share?text=Women%20Saved%20the%20Affordable%20Care%20Act&amp;via=twitteruser&amp;url=http%3A%2F%2Fwww.gq.com%2Fstory%2Fwomen-saved-the-affordable-care-act" data-pin-do="" target="_blank" aria-label="Twitter" data-reactid="86"><span class="icon" data-reactid="87"></span><span class="label" data-reactid="88">Twitter</span></a>`;
       $ = cheerio.load(body);
       const result = linkAggregator.getTwitterAuthor($);
 
-      assert.deepEqual(result, 'GQ');
+      assert.deepEqual(result, expectedResult);
     });
 
 
@@ -251,11 +347,11 @@ describe('scraper', function() {
 
       it('ignores first intent and is able to extract name from second link', () => {
         const body = `<a href="//twitter.com/search?q=levelsio%20ARKit%20OR%20AR&src=typd">AR apps</a>
-<a href="//twitter.com/levelsio">Twitter</a>`;
+<a href="//twitter.com/twitteruser">Twitter</a>`;
         $ = cheerio.load(body);
         const result = linkAggregator.getTwitterAuthor($);
 
-        assert.deepEqual(result, 'levelsio');
+        assert.deepEqual(result, expectedResult);
       });
 
       it('ignores tweet intent missing username', () => {
@@ -267,20 +363,20 @@ describe('scraper', function() {
       });
 
       it('extracts username from user intent', () => {
-        const body = `<a target="_blank" href="https://twitter.com/intent/user?screen_name=creativebloq" class="icon icon-circle icon-twitter"></a>
+        const body = `<a target="_blank" href="https://twitter.com/intent/user?screen_name=twitteruser" class="icon icon-circle icon-twitter"></a>
   </div>`;
         $ = cheerio.load(body);
         const result = linkAggregator.getTwitterAuthor($);
 
-        assert.deepEqual(result, 'creativebloq');
+        assert.deepEqual(result, expectedResult);
       });
 
       it('extracts username from tweet intent', () => {
-        const body = `<a href="https://twitter.com/intent/tweet?hashtags=codebrahma&original_referer=http://www.codebramha.com/&text=Check%20out%20this%20amazing%20post%20:%20&tw_p=tweetbutton&url=https://codebrahma.com/structuring-async-operations-react-redux-applications/&via=codebrahma" class="social twitter" title="Share on Twitter" target="_blank"><i class="fa fa-twitter"></i></a>`;
+        const body = `<a href="https://twitter.com/intent/tweet?hashtags=codebrahma&original_referer=http://www.codebramha.com/&text=Check%20out%20this%20amazing%20post%20:%20&tw_p=tweetbutton&url=https://codebrahma.com/structuring-async-operations-react-redux-applications/&via=twitteruser" class="social twitter" title="Share on Twitter" target="_blank"><i class="fa fa-twitter"></i></a>`;
         $ = cheerio.load(body);
         const result = linkAggregator.getTwitterAuthor($);
 
-        assert.deepEqual(result, 'codebrahma');
+        assert.deepEqual(result, expectedResult);
       });
     });
 

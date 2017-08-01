@@ -14,6 +14,7 @@ const async = require('async');
 const winston = require('winston');
 const cheerio = require('cheerio');
 const defaultJunkParams = require('./default-junk-params');
+const parseMessyTime = require('parse-messy-time');
 
 winston.level = 'debug';
 
@@ -672,33 +673,46 @@ ${searchString}`);
     let time;
 
     // Search for Open Graph published_time.
-    const publishedTag = $('meta[property="article:published_time"]');
+    const publishedTag = $('[property="article:published_time"]');
     time = publishedTag.attr('content');
 
-    // Schema.org
     if (!time) {
-      const datePublishedTag = $('meta[itemprop=datePublished]');
-      time = datePublishedTag.attr('content');
+      const metas = $(`[itemprop=datePublished], [property="article:published_time"], [name="revised"], [name="date"], [name="last-modified"], [name="last-updated"], [name="search_date"], [property="datePublished"]`);
+      time = metas.attr('content');
     }
 
     // Search for a <time> tag.
+    if (!time) {
+      const timeTag = $('time');
+      time = timeTag.text();
+    }
+
     if (!time) {
       const timeTag = $('[datetime]');
       time = timeTag.attr('datetime');
     }
 
-    // Last ditch effort: look for classname containing "datetime".
+    // Last ditch efforts.
     if (!time) {
-      const tag = $('[class*=datetime]');
+      const tag = $('[class*=datetime], [class*=date], [class*=published], [class*=meta]');
       time = tag.text();
     }
 
     // Convert to timestamp.
+    let timestamp;
     if (time) {
-      time = (new Date(time)).getTime();
+      timestamp = new Date(time);
+      timestamp = timestamp.getTime();
     }
 
-    return time || 0;
+    const isInvalidDate = Number.isNaN(timestamp);
+    if (isInvalidDate) {
+      // Try parsing human-readable time
+      timestamp = parseMessyTime(time);
+      timestamp = timestamp.getTime();
+    }
+
+    return timestamp || 0;
   }
 
   /**
@@ -751,13 +765,13 @@ ${searchString}`);
 
     // Next look for a Twitter creator card.
     if (!author) {
-      const twitterCreatorTag = $('meta[name="twitter:creator"]');
+      const twitterCreatorTag = $('[name="twitter:creator"]');
       author = twitterCreatorTag.attr('content');
     }
 
     // Next look for a Twitter site card.
     if (!author) {
-      const twitterSiteTag = $('meta[name="twitter:site"]');
+      const twitterSiteTag = $('[name="twitter:site"]');
       author = twitterSiteTag.attr('content');
     }
 
@@ -781,12 +795,12 @@ ${searchString}`);
     let title;
 
     // First check for open graph title.
-    const ogTitleTag = $('meta[property="og:title"]');
+    const ogTitleTag = $('[property="og:title"]');
     title = ogTitleTag.attr('content');
 
     // Next check for Twitter card.
     if (!title) {
-      const twitterTitleTag = $('meta[name="twitter:title"]');
+      const twitterTitleTag = $('[name="twitter:title"]');
       title = twitterTitleTag.attr('content');
     }
     
@@ -806,18 +820,18 @@ ${searchString}`);
     let excerpt = '';
 
     // Check for Open Graph description.
-    const ogDescriptionTag = $('meta[property="og:description"]');
+    const ogDescriptionTag = $('[property="og:description"]');
     excerpt = ogDescriptionTag.attr('content');
 
     // Check for Twitter description.
     if (!excerpt) {
-      const twitterDescriptionTag = $('meta[name="twitter:description"]');
+      const twitterDescriptionTag = $('[name="twitter:description"]');
       excerpt = twitterDescriptionTag.attr('content');;
     }
 
     // Check for regular meta description tag.
     if (!excerpt) {
-      const metaDescriptionTag = $('meta[name="description"]');
+      const metaDescriptionTag = $('[name="description"]');
       excerpt = metaDescriptionTag.attr('content');
     }
 

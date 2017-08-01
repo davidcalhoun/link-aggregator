@@ -26,6 +26,7 @@
     "cheerio": "^0.22.0",
     "codebird": "^2.6.0",
     "isomorphic-fetch": "^2.2.1",
+    "parse-messy-time": "^2.1.0",
     "promise-polyfill": "^6.0.2",
     "ramda": "^0.23.0",
     "redis": "^2.6.5",
