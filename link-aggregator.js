@@ -1397,11 +1397,11 @@ ${searchString}`);
     this._timerStart(fnName);
 
     this._asyncGetTwitterList(argsCopy, (err, tweets) => {
+      this._timerEnd(fnName);
+
       // Sanity checks
       if (err) return done(`${fnName} ${err}`);
       if (tweets.length === 0) return done(`${fnName} No tweets - network problems?`);
-
-      this._timerEnd(fnName);
 
       //winston.debug(`${fnName}: ${tweets.length} tweets returned before processing.`);
 
