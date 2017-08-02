@@ -195,8 +195,13 @@
   },
 
   {
-    "domain": ["gizmodo.com"],
+    "domain": ["github.com"],
     "params": ["rev"]
+  },
+
+  {
+    "domain": ["gizmodo.com"],
+    "removeHash": true
   },
 
   {
@@ -335,7 +340,7 @@
   },
 
   {
-    "domain": "www.youtube.com",
+    "domain": ["www.youtube.com", "youtu.be"],
     "params": ["a", "feature", "flow", "sort", "view", "index", "list"]
   }
 ]
