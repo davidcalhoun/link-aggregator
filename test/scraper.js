@@ -245,6 +245,16 @@ describe('scraper', function() {
       assert.deepEqual(resultS, 1500274800);
     });
 
+    it('meta class', () => {
+      const body = `<p class="meta">
+        Written by <em>Jorgé</em> on Saturday July 29, 2017
+</p>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getPublishedTime($);
+      const resultS = parseInt(result / 1000);
+      assert.deepEqual(resultS, 1501311600);
+    });
+
     it('published-at class', () => {
       const body = `<span class="published-at">Jul 23, 2017</span>`;
       $ = cheerio.load(body);
@@ -321,6 +331,14 @@ describe('scraper', function() {
     onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
     <i class="fa fa-twitter"></i>
 </a>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getTwitterAuthor($);
+
+      assert.deepEqual(result, '');
+    });
+
+    it('ignores share 2', () => {
+      const body = `<a href="https://twitter.com/share" class="twitter-share-button">Tweet</a>`;
       $ = cheerio.load(body);
       const result = linkAggregator.getTwitterAuthor($);
 

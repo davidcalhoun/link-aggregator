@@ -722,58 +722,61 @@ ${searchString}`);
    */
   getTwitterAuthor($) {
     let author = '';
+    let via = '';
+    let screen_name = '';
 
-    // First look for link tag.
-    const twitterLinkTags = $('a[href*="twitter.com"]');
+    // Look for a Twitter creator card.
+    const twitterCreatorTag = $('[name="twitter:creator"]');
+    author = twitterCreatorTag.attr('content');
 
-    twitterLinkTags.each((index, linkTag) => {
-      // Author already found, return early.
-      if (author) return;
+    // Next look for link tag.
+    if (!author) {
+      const twitterLinkTags = $('a[href*="twitter.com"]');
 
-      if (linkTag) {
-        let href = linkTag.attribs.href || '';
+      twitterLinkTags.each((index, linkTag) => {
+        // Author already found, return early.
+        if (author) return;
 
-        if (!author && href) {
-          // Fix for protocol-less urls (url util has problems with them).
-          const hasProtocol = !!href.match(/http:\/\/|https:\/\//);
-          if (!hasProtocol) {
-            href = href.replace(/(\/\/)?twitter.com/, `https://twitter.com`);
-          }
+        if (linkTag) {
+          let href = linkTag.attribs.href;
+          if (href) {
+            // Fix for protocol-less urls (url util has problems with them).
+            const hasProtocol = !!href.match(/http:\/\/|https:\/\//);
+            if (!hasProtocol) {
+              href = href.replace(/(\/\/)?twitter.com/, `https://twitter.com`);
+            }
 
-          // Fix for hashbangs.
-          href = href.replace(/#\!\//, '');
+            // Fix for hashbangs.
+            href = href.replace(/#\!\//, '');
 
-          // Ignore tweets, share, etc.
-          const isTweet = href.match('/status/');
-          const isShare = href.match('/share?');
-          const isSearch = href.match('/search?');
-          const isHome = href.match('/home?');
-          const isIntent = href.match(/intent\//i);
+            // Ignore tweets, share, etc.
+            const isTweet = href.match(/(\/status\/)+/i);
+            const isShare = href.match(/(\/twitter.com\/share\??)+/i);
+            const isSearch = href.match(/(\/twitter.com\/search\??)+/i);
+            const isHome = href.match(/(\/twitter.com\/home\??)+/i);
+            const isIntent = href.match(/(\/intent\/)+/i);
 
-          // See if we can extract a Twitter name.
-          const parsedURL = urlUtil.parse(href, true);
-          if (isIntent || isShare || isSearch || isHome) {
-            author = R.path(['query', 'screen_name'], parsedURL) ||
-              R.path(['query', 'via'], parsedURL) ||
-              '';
-          } else if (!isTweet) {
-            author = R.path(['pathname'], parsedURL);
+            // See if we can extract a Twitter name.
+            const parsedURL = urlUtil.parse(href, true);
+            if (isIntent || isShare || isSearch || isHome) {
+              via = via || R.path(['query', 'via'], parsedURL);
+              screen_name = screen_name || R.path(['query', 'screen_name'], parsedURL);
+            } else if (!isTweet) {
+              author = R.path(['pathname'], parsedURL);
+            }
           }
         }
-      }
-    });
-
-    // Next look for a Twitter creator card.
-    if (!author) {
-      const twitterCreatorTag = $('[name="twitter:creator"]');
-      author = twitterCreatorTag.attr('content');
+      });
     }
+
 
     // Next look for a Twitter site card.
     if (!author) {
       const twitterSiteTag = $('[name="twitter:site"]');
       author = twitterSiteTag.attr('content');
     }
+
+    if (!author) author = screen_name || via;
 
     if (!author) {
       author = '';
