@@ -706,7 +706,7 @@ ${searchString}`);
     }
 
     const isInvalidDate = Number.isNaN(timestamp);
-    if (isInvalidDate) {
+    if (isInvalidDate && time) {
       // Try parsing human-readable time
       timestamp = parseMessyTime(time);
       timestamp = timestamp.getTime();
@@ -1038,6 +1038,7 @@ ${searchString}`);
   removeJunkURLParams(url, removeConfig) {
     const removeParams = removeConfig || defaultJunkParams;
 
+    let outputURL;
     const urlParsed = urlUtil.parse(url, true);
     const query = urlParsed.query;
 
@@ -1065,7 +1066,15 @@ ${searchString}`);
 
     urlParsed.search = (queryFormatted) ? `?${queryFormatted}` : '';
 
-    return urlParsed.format();
+    outputURL = urlParsed.format();
+
+    // Remove trailing slashes for consistency.
+    const hasTrailingSlash = outputURL[outputURL.length - 1] === '/';
+    if (hasTrailingSlash) {
+      outputURL = outputURL.substr(0, outputURL.length - 1);
+    }
+
+    return outputURL;
   }
 
   /*
