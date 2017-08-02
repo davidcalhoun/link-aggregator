@@ -63,6 +63,7 @@
   "scid",
   "sdid",
   "set",
+  "sf97029123",
   "share",
   "shared",
   "slreturn",
@@ -127,6 +128,9 @@
 
   { "__comment": "Google / Urchin" },
   "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "utm_cid", "utm_name",
+  "utm_sq",
+  "utm-source", "utm-medium", "utm-campaign", "utm-term", "utm-content", "utm-cid", "utm-name",
+  "utm-sq",
 
   { "__comment": "Webtrends" },
   "WT.mc_id",
@@ -341,6 +345,6 @@
 
   {
     "domain": ["www.youtube.com", "youtu.be"],
-    "params": ["a", "feature", "flow", "sort", "view", "index", "list"]
+    "params": ["a", "feature", "flow", "sort", "view", "index", "list", "sns"]
   }
 ]
