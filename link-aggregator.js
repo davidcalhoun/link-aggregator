@@ -480,6 +480,8 @@ ${searchString}`);
   getUrlDetails(url, urlMeta, done) {
     const fnName = `${moduleName}/getUrlDetails`;
 
+    winston.debug();
+
     let urlCopy = url;
     let urlDetailsObj;
 
@@ -506,8 +508,11 @@ ${searchString}`);
         }
 
         // Follow cached redirect if needed.
-        if (parsedReply.redirect) {
+        const redirectURLIsDifferent = parsedReply.redirect && parsedReply.redirect !== urlCopy;
+        if (redirectURLIsDifferent) {
           return this.getUrlDetails(`${parsedReply.redirect}`, urlMeta, done);
+        } else {
+          winston.error(`${fnName}: ignoring redirect: ${urlCopy}`);
         }
 
         urlDetailsObj = this.mergeUrls(parsedReply, urlMeta);
