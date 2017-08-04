@@ -1445,7 +1445,7 @@ ${searchString}`);
    */
   fetchPocketList(args, done) {
     const fnName = `${moduleName}/fetchPocketList`;
-    winston.debug(`${fnName}`, args);
+    winston.debug(`${fnName}: ${args.username}`);
 
     done = done || (() => {});
 
@@ -1507,7 +1507,7 @@ ${searchString}`);
     .then((pocketAPIResponse) => {
       this._timerEnd(fnName);
 
-      winston.debug(`${fnName} pocket response for ${username}`, pocketAPIResponse);
+      winston.debug(`${fnName} pocket response for ${username} ${pocketAPIResponse.status} ${pocketAPIResponse.complete} ${pocketAPIResponse.error}`);
 
       return this.pocketToURLs(pocketAPIResponse, {
         tag,
@@ -1553,7 +1553,7 @@ ${searchString}`);
   pocketToURLs(pocketAPIResponse, args, done) {
     const fnName = `${moduleName}/pocketToURLs`;
 
-    winston.debug(pocketToURLs);
+    winston.debug(fnName);
 
     let pocketURLs = R.values(pocketAPIResponse.list);
 
@@ -1564,7 +1564,14 @@ ${searchString}`);
 
     //winston.debug(`${pocketURLs.length} Pocket links returned before processing.`);
 
-    const parallelFns = pocketURLs.map((obj) => (parallelCb) => this.pocketToURL(obj, args, parallelCb));
+    const parallelFns = pocketURLs.map((obj) => (parallelCb) => {
+      const urlObj = this.pocketToURL(obj, args, parallelCb);
+
+      winston.debug(`${fnName}: ${obj.resolved_url}`);
+
+      return urlObj;
+    });
+
     return async.parallelLimit(parallelFns, 5, (err, urlObjs) => {
       if (err) winston.error(`${fnName} parallelLimit: err`);
 
