@@ -497,7 +497,7 @@ ${searchString}`);
 
         // Reject if url has been removed previously (e.g. by the user).
         if (parsedReply[urlRemovedFlagKey]) {
-          winston.debug(`${fnName}: removed previously by user: ${urlCopy}`);
+          //winston.debug(`${fnName}: removed previously by user: ${urlCopy}`);
           return done();
         }
 
@@ -1326,12 +1326,14 @@ ${searchString}`);
     client.get(`${redisNS}${redisIsFetchingKey}`, (err, reply) => {
       if (reply !== '0') {
         winston.debug(`${fnName}: list fetching already active.`);
-        return done(null, []);
+        return done(`${fnName}: list fetching already active.`);
       } else {
         winston.debug(`${fnName}: starting list fetching.`)
       }
 
-      return client.set(`${redisNS}${redisIsFetchingKey}`, Date.now(), () => {
+      return client.set(`${redisNS}${redisIsFetchingKey}`, Date.now(), (err, reply) => {
+        if (err) winston.error(`${fnName} redis set error: ${err}`);
+
         // Pocket
         lists.pocket.forEach((pocketList) => {
           // Separate call for each Pocket tag.
@@ -1347,9 +1349,15 @@ ${searchString}`);
         });
 
         // No-op, no lists to process.
-        if (parallelFns.length === 0) return done(null, []);
+        if (parallelFns.length === 0) {
+          winston.debug(`${fnName}: no lists to fetch`);
+          client.set(`${redisNS}${redisIsFetchingKey}`, 0);
+          return done(`${fnName}: no lists to fetch`);
+        }
 
         return async.parallelLimit(parallelFns, 2, (err, urls) => {
+          if (err) winston.error(`${fnName} parallelLimit error: ${err}`);
+
           // Combine with old url objects if present.
           const oldList = R.path(['oldList', 'list'], lists) || [];
           const oldListLength = R.path(['length'], oldList) || 0;
