@@ -1512,7 +1512,10 @@ ${searchString}`);
       return this.pocketToURLs(pocketAPIResponse, {
         tag,
         username
-      }, done);
+      }, (err, response) => {
+        if (err) winston.debug(`${fnName} pocketToURLs: ${err}`);
+        done(err, response);
+      });
     })
     .catch(error => {
       const pocketResponseError = `${fnName}: ${error.message}`;
@@ -1527,12 +1530,16 @@ ${searchString}`);
   pocketToURL(pocketUrlObj, args, done) {
     const fnName = `${moduleName}/pocketToURL`;
 
+    winston.debug(fnName);
+
     const urlDetailsArgs = {
       pocketObj: Object.assign({}, pocketUrlObj, args)
     };
 
     // Get scraped info for this url.
     return this.getUrlDetails(pocketUrlObj.resolved_url, urlDetailsArgs, (err, urlDetailsObj) => {
+      if (err) winston.error(`${fnName} getUrlDetails: ${err}`);
+
       // Return early if url was rejected.
       if (!urlDetailsObj) return done();
 
@@ -1546,6 +1553,8 @@ ${searchString}`);
   pocketToURLs(pocketAPIResponse, args, done) {
     const fnName = `${moduleName}/pocketToURLs`;
 
+    winston.debug(pocketToURLs);
+
     let pocketURLs = R.values(pocketAPIResponse.list);
 
     // Filter out old urls.
@@ -1557,7 +1566,7 @@ ${searchString}`);
 
     const parallelFns = pocketURLs.map((obj) => (parallelCb) => this.pocketToURL(obj, args, parallelCb));
     return async.parallelLimit(parallelFns, 5, (err, urlObjs) => {
-      if (err) winston.error(`${fnName}: err`);
+      if (err) winston.error(`${fnName} parallelLimit: err`);
 
       let urlObjsCopy = urlObjs.concat();
 
