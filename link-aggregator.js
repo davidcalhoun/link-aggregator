@@ -195,6 +195,8 @@ class Aggregator {
   _asyncGetTwitterList(args, cb) {
     const fnName = '_asyncGetTwitterList';
 
+    winston.debug(fnName);
+
     const argsCopy = Object.assign({}, args);
 
     // Tests: return a data stub immediately.
@@ -216,6 +218,8 @@ class Aggregator {
 
     // Pagination
     if ('max_id' in argsCopy) listOptions.max_id = argsCopy.max_id;
+
+    winston.debug(`${fnName}: fetching...`);
 
     // TODO: send pagination calls out in parallel instead of sequentially
     return this.codebird.__call(
@@ -1328,7 +1332,7 @@ ${searchString}`);
         winston.debug(`${fnName}: list fetching already active.`);
         return done(`${fnName}: list fetching already active.`);
       } else {
-        winston.debug(`${fnName}: starting list fetching.`)
+        winston.debug(`${fnName}: starting list fetching.`, lists);
       }
 
       return client.set(`${redisNS}${redisIsFetchingKey}`, Date.now(), (err, reply) => {
@@ -1399,6 +1403,7 @@ ${searchString}`);
    */
   fetchTwitterList(args, done) {
     const fnName = `${moduleName}/fetchTwitterList`;
+    winston.debug(`${fnName}`);
 
     const argsCopy = Object.assign({}, args);
 
@@ -1434,6 +1439,8 @@ ${searchString}`);
    */
   fetchPocketList(args, done) {
     const fnName = `${moduleName}/fetchPocketList`;
+    winston.debug(`${fnName}`);
+
     done = done || (() => {});
 
     const argsCopy = Object.assign({}, args);
