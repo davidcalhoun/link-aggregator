@@ -219,7 +219,7 @@ class Aggregator {
     // Pagination
     if ('max_id' in argsCopy) listOptions.max_id = argsCopy.max_id;
 
-    winston.debug(`${fnName}: fetching...`);
+    winston.debug(`${fnName}: fetching...`, argsCopy);
 
     // TODO: send pagination calls out in parallel instead of sequentially
     return this.codebird.__call(
@@ -1332,7 +1332,7 @@ ${searchString}`);
         winston.debug(`${fnName}: list fetching already active.`);
         return done(`${fnName}: list fetching already active.`);
       } else {
-        winston.debug(`${fnName}: starting list fetching.`, lists);
+        winston.debug(`${fnName}: starting list fetching`, lists);
       }
 
       return client.set(`${redisNS}${redisIsFetchingKey}`, Date.now(), (err, reply) => {
@@ -1341,6 +1341,7 @@ ${searchString}`);
         // Pocket
         lists.pocket.forEach((pocketList) => {
           // Separate call for each Pocket tag.
+          winston.debug(`${fnName}`, pocketList);
           pocketList.tags.forEach((tag) => {
             let pocketArgs = Object.assign({}, pocketList, { tag });
             parallelFns.push((parallelCb) => this.fetchPocketList(pocketArgs, parallelCb));
@@ -1349,6 +1350,7 @@ ${searchString}`);
 
         // Twitter
         lists.twitter.forEach((twitterList) => {
+          winston.debug(`${fnName}`, twitterList);
           parallelFns.push((parallelCb) => this.fetchTwitterList(twitterList, parallelCb));
         });
 
@@ -1403,7 +1405,7 @@ ${searchString}`);
    */
   fetchTwitterList(args, done) {
     const fnName = `${moduleName}/fetchTwitterList`;
-    winston.debug(`${fnName}`);
+    winston.debug(`${fnName}`, args);
 
     const argsCopy = Object.assign({}, args);
 
@@ -1439,7 +1441,7 @@ ${searchString}`);
    */
   fetchPocketList(args, done) {
     const fnName = `${moduleName}/fetchPocketList`;
-    winston.debug(`${fnName}`);
+    winston.debug(`${fnName}`, args);
 
     done = done || (() => {});
 
