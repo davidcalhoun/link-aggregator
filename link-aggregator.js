@@ -1416,7 +1416,11 @@ ${searchString}`);
 
       // Sanity checks
       if (err) return done(`${fnName} ${err}`);
-      if (tweets.length === 0) return done(`${fnName} No tweets - network problems?`);
+      if (tweets.length === 0) {
+        const noTweetsError = `${fnName} No tweets - network problems?`;
+        winston.error(noTweetsError);
+        return done(noTweetsError);
+      }
 
       //winston.debug(`${fnName}: ${tweets.length} tweets returned before processing.`);
 
@@ -1455,7 +1459,9 @@ ${searchString}`);
 
     if (argsNotPresent.length > 0) {
       const argsNotPresentStr = argsNotPresent.join(', ');
-      return done(`${fnName} error: required args are not present: ${argsNotPresentStr}`);
+      const argsNotPresentError = `${fnName} error: required args are not present: ${argsNotPresentStr}`;
+      winston.error(argsNotPresentError);
+      return done(argsNotPresentError);
     }
 
     // Use fetchStub for tests.
@@ -1499,14 +1505,20 @@ ${searchString}`);
       timeout
     ])
     .then((pocketAPIResponse) => {
-      this._timerEnd(fnName);     
+      this._timerEnd(fnName);
+
+      winston.debug(`${fnName} pocket response for ${username}`, pocketAPIResponse);
 
       return this.pocketToURLs(pocketAPIResponse, {
         tag,
         username
       }, done);
     })
-    .catch(error => done(`link-aggregator/getPocketList ${error.message}`));
+    .catch(error => {
+      const pocketResponseError = `${fnName}: ${error.message}`;
+      winston.error(pocketResponseError);
+      done(pocketResponseError);
+    });
   }
 
   /**
