@@ -686,7 +686,7 @@ ${searchString}`);
     time = publishedTag.attr('content');
 
     if (!time) {
-      const metas = $(`[itemprop=datePublished], [itemprop=dateModified], [property="article:published_time"], [name="revised"], [name="date"], [name="last-modified"], [name="last-updated"], [name="search_date"], [property="datePublished"]`);
+      const metas = $(`[property="article:post_date"], [property="article:post_modified"], [itemprop=datePublished], [itemprop=dateModified], [property="article:published_time"], [name="revised"], [name="date"], [name="last-modified"], [name="last-updated"], [name="search_date"], [property="datePublished"]`);
       time = metas.attr('content');
     }
 
@@ -1410,7 +1410,7 @@ ${searchString}`);
    */
   fetchTwitterList(args, done) {
     const fnName = `${moduleName}/fetchTwitterList`;
-    winston.debug(`${fnName}`, args);
+    winston.debug(`${fnName} ${args.owner}/${args.name}`);
 
     const argsCopy = Object.assign({}, args);
 

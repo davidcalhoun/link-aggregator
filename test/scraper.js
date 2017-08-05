@@ -204,7 +204,9 @@ describe('scraper', function() {
         {name: 'last-modified'},
         {name: 'last-updated'},
         {name: 'search_date'},
-        {property: 'datePublished'}
+        {property: 'datePublished'},
+        {property: 'article:post_date'},
+        {property: 'article:post_modified'}
       ];
 
       metas.forEach((meta) => {
