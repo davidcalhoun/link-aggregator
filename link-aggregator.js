@@ -480,8 +480,6 @@ ${searchString}`);
   getUrlDetails(url, urlMeta, done) {
     const fnName = `${moduleName}/getUrlDetails`;
 
-    winston.debug();
-
     let urlCopy = url;
     let urlDetailsObj;
 
@@ -508,11 +506,13 @@ ${searchString}`);
         }
 
         // Follow cached redirect if needed.
-        const redirectURLIsDifferent = parsedReply.redirect && parsedReply.redirect !== urlCopy;
-        if (redirectURLIsDifferent) {
-          return this.getUrlDetails(`${parsedReply.redirect}`, urlMeta, done);
-        } else {
-          winston.error(`${fnName}: ignoring redirect: ${urlCopy}`);
+        const redirectURLIsDifferent = parsedReply.redirect !== urlCopy;
+        if (parsedReply.redirect) {
+          if (redirectURLIsDifferent) {
+            return this.getUrlDetails(`${parsedReply.redirect}`, urlMeta, done);
+          } else {
+            winston.error(`${fnName}: ignoring circular redirect: ${urlCopy} ${parsedReply.redirect}`);
+          } 
         }
 
         urlDetailsObj = this.mergeUrls(parsedReply, urlMeta);
@@ -1078,10 +1078,10 @@ ${searchString}`);
     outputURL = urlParsed.format();
 
     // Remove trailing slashes for consistency.
-    const hasTrailingSlash = outputURL[outputURL.length - 1] === '/';
-    if (hasTrailingSlash) {
-      outputURL = outputURL.substr(0, outputURL.length - 1);
-    }
+    // const hasTrailingSlash = outputURL[outputURL.length - 1] === '/';
+    // if (hasTrailingSlash) {
+    //   outputURL = outputURL.substr(0, outputURL.length - 1);
+    // }
 
     return outputURL;
   }
@@ -1518,7 +1518,7 @@ ${searchString}`);
         tag,
         username
       }, (err, response) => {
-        if (err) winston.debug(`${fnName} pocketToURLs: ${err}`);
+        if (err) winston.error(`${fnName} pocketToURLs: ${err}`);
         done(err, response);
       });
     })
