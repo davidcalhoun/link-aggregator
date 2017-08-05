@@ -223,6 +223,14 @@ describe('scraper', function() {
       });
     });
 
+    it('schema.org', () => {
+      const body = `<li class="rd" property="datePublished" content="February 2nd, 2016">February 2nd, 2016</li>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getPublishedTime($);
+      const resultS = parseInt(result / 1000);
+      assert.deepEqual(resultS, 1454400000);
+    });
+
     it('nested date class', () => {
       const body = `<div class="date"><span>14 July 2017</span></div>`;
       $ = cheerio.load(body);
