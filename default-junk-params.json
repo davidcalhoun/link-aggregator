@@ -345,6 +345,6 @@
 
   {
     "domain": ["www.youtube.com", "youtu.be"],
-    "params": ["a", "feature", "flow", "sort", "view", "index", "list", "sns"]
+    "params": ["a", "feature", "flow", "sort", "view", "index", "sns"]
   }
 ]
