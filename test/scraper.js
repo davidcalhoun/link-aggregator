@@ -241,6 +241,14 @@ describe('scraper', function() {
       assert.deepEqual(resultS, 1500274800);
     });
 
+    it('gets time in h2', () => {
+      const body = `<h1 class="title">13 CSS Page Transitions</h1>
+<h2 class="subtitle is-5">July 30, 2017 </h2>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getPublishedTime($);
+      const resultS = parseInt(result / 1000);
+      assert.deepEqual(resultS, 1501398000);
+    });
 
     it('published-at', () => {
       const body = `<span class="published-at">Jul 28, 2017</span><span class="action-space" id="action-space"></span>`;

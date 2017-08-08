@@ -727,6 +727,11 @@ ${searchString}`);
       time = tag.first().text();
     }
 
+    if (!time) {
+      const h2Tags = $('h2');
+      time = h2Tags.first().text();
+    }
+
     // If no published time, but only modified time, use the latter.
     if (!time && timeModified) {
       time = timeModified;
