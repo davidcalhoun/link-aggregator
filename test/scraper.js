@@ -224,6 +224,32 @@ describe('scraper', function() {
       });
     });
 
+    it('prefers the first occurring published-at time', () => {
+      const body = `<span class="published-at">Jul 28, 2017</span>
+<span class="published-at">on August 08, 2017</span>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getPublishedTime($);
+      const resultS = parseInt(result / 1000);
+      assert.deepEqual(resultS, 1501225200);
+    });
+
+    it('updated id', () => {
+      const body = `<section id="updated"><p>Last updated on 2017-07-17</p></section>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getPublishedTime($);
+      const resultS = parseInt(result / 1000);
+      assert.deepEqual(resultS, 1500274800);
+    });
+
+
+    it('published-at', () => {
+      const body = `<span class="published-at">Jul 28, 2017</span><span class="action-space" id="action-space"></span>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getPublishedTime($);
+      const resultS = parseInt(result / 1000);
+      assert.deepEqual(resultS, 1501225200);
+    });
+
     it('nested date class', () => {
       const body = `<div class="date"><span>14 July 2017</span></div>`;
       $ = cheerio.load(body);

@@ -680,15 +680,26 @@ ${searchString}`);
    */
   getPublishedTime($) {
     let time;
+    let timeModified;
 
-    // Search for Open Graph published_time.
-    const publishedTag = $('[property="article:published_time"]');
+    // Attempt to find published time.
+    const publishedTag = $(`[property="article:published_time"],
+[property="article:post_date"],
+[itemprop=datePublished],
+[property="article:published_time"],
+[name="date"],
+[name="search_date"],
+[property="datePublished"],
+[property="DC.date.issued"]`);
     time = publishedTag.attr('content');
 
-    if (!time) {
-      const metas = $(`[property="article:post_date"], [property="article:post_modified"], [itemprop=datePublished], [itemprop=dateModified], [property="article:published_time"], [name="revised"], [name="date"], [name="last-modified"], [name="last-updated"], [name="search_date"], [property="datePublished"], [property="DC.date.issued"]`);
-      time = metas.attr('content');
-    }
+    // Attempt to find updated time.
+    const updatedTag = $(`[property="article:post_modified"],
+[itemprop=dateModified],
+[name="revised"],
+[name="last-modified"],
+[name="last-updated"]`);
+    timeModified = updatedTag.attr('content');
 
     // Search for a <time> tag.
     if (!time) {
@@ -703,8 +714,22 @@ ${searchString}`);
 
     // Last ditch efforts.
     if (!time) {
-      const tag = $('[class*=datetime], [class*=date], [class*=published], [class*=meta]');
-      time = tag.text();
+      const tag = $(`[class*=datetime],
+[id*=datetime],
+[class*=date],
+[id*=date],
+[class*=published],
+[id*=published],
+[class*=meta],
+[id*=meta],
+[class*=updated],
+[id*=updated]`);
+      time = tag.first().text();
+    }
+
+    // If no published time, but only modified time, use the latter.
+    if (!time && timeModified) {
+      time = timeModified;
     }
 
     // Convert to timestamp.
