@@ -686,7 +686,7 @@ ${searchString}`);
     time = publishedTag.attr('content');
 
     if (!time) {
-      const metas = $(`[property="article:post_date"], [property="article:post_modified"], [itemprop=datePublished], [itemprop=dateModified], [property="article:published_time"], [name="revised"], [name="date"], [name="last-modified"], [name="last-updated"], [name="search_date"], [property="datePublished"]`);
+      const metas = $(`[property="article:post_date"], [property="article:post_modified"], [itemprop=datePublished], [itemprop=dateModified], [property="article:published_time"], [name="revised"], [name="date"], [name="last-modified"], [name="last-updated"], [name="search_date"], [property="datePublished"], [property="DC.date.issued"]`);
       time = metas.attr('content');
     }
 
