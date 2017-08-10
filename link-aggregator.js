@@ -689,6 +689,7 @@ ${searchString}`);
 [property="article:published_time"],
 [name="date"],
 [name="search_date"],
+[name="pubdate"],
 [property="datePublished"],
 [property="DC.date.issued"]`);
     time = publishedTag.attr('content');
@@ -1367,7 +1368,7 @@ ${searchString}`);
         winston.debug(`${fnName}: list fetching already active.`);
         return done(`${fnName}: list fetching already active.`);
       } else {
-        winston.debug(`${fnName}: starting list fetching`, lists);
+        winston.debug(`${fnName}: starting list fetching`);
       }
 
       return client.set(`${redisNS}${redisIsFetchingKey}`, Date.now(), (err, reply) => {
@@ -1565,7 +1566,7 @@ ${searchString}`);
   pocketToURL(pocketUrlObj, args, done) {
     const fnName = `${moduleName}/pocketToURL`;
 
-    winston.debug(fnName);
+    //winston.debug(fnName);
 
     const urlDetailsArgs = {
       pocketObj: Object.assign({}, pocketUrlObj, args)
@@ -1588,7 +1589,7 @@ ${searchString}`);
   pocketToURLs(pocketAPIResponse, args, done) {
     const fnName = `${moduleName}/pocketToURLs`;
 
-    winston.debug(fnName);
+    //winston.debug(fnName);
 
     let pocketURLs = R.values(pocketAPIResponse.list);
 
@@ -1602,7 +1603,7 @@ ${searchString}`);
     const parallelFns = pocketURLs.map((obj) => (parallelCb) => {
       const urlObj = this.pocketToURL(obj, args, parallelCb);
 
-      winston.debug(`${fnName}: ${obj.resolved_url}`);
+      //winston.debug(`${fnName}: ${obj.resolved_url}`);
 
       return urlObj;
     });
