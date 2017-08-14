@@ -293,6 +293,16 @@ describe('scraper', function() {
       assert.deepEqual(resultS, 1501311600);
     });
 
+    it('metadata class', () => {
+      const body = `<p class="metadata">Posted 14-Aug 2017 under code.</p>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getPublishedTime($);
+      const resultS = parseInt(result / 1000);
+      assert.deepEqual(resultS, 1502744400);
+    });
+
+    
+
     it('published-at class', () => {
       const body = `<span class="published-at">Jul 23, 2017</span>`;
       $ = cheerio.load(body);
