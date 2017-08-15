@@ -32,17 +32,23 @@
   "imm_mid",
   "intcmp",
   "ito",
+  "kwp_0",
+  "kwp_1",
+  "kwp_4",
   "link_id",
   "linkCode",
   "linkId",
   "locale",
   "LSD",
+  "m",
   "mod",
   "mwrsm",
   "ncid",
   "ocid",
   "partnerid",
   "pcampaignid",
+  "pk_campaign",
+  "pk_kwd",
   "postshare",
   "ref",
   "ref_",
@@ -50,6 +56,7 @@
   "referrer",
   "refresh",
   "refURL",
+  "related",
   "rf",
   "rref",
   "s_subsrc",
@@ -80,6 +87,7 @@
   "via",
   "wt.mc_id",
   "xid",
+  "xrs",
 
   { "__comment": "?" },
   "adbsc", "adbid", "adbpl", "adbpr",
@@ -114,7 +122,7 @@
   { "__comment": "Qualtrics" },
   "Q_CHL", "Q_SocialSource",
 
-  { "__comment": "NY Times, Vulture, etc" },
+  { "__comment": "NY Times, NY Mag, Vulture, etc" },
   "smprod", "smid", "mid", "smtyp", "smvar",
 
   { "__comment": "Yahoo News" },
@@ -159,6 +167,11 @@
   },
 
   {
+    "domain": "blogs.windows.com",
+    "removeHash": true
+  },
+
+  {
     "domain": "businessinsider.com",
     "params": ["r", "IR", "mod"]
   },
@@ -166,6 +179,11 @@
   {
     "domain": "www.cbsnews.com",
     "params": ["ftag"]
+  },
+
+  {
+    "domain": "codeburst.io",
+    "params": ["gi"]
   },
 
   {
@@ -261,6 +279,11 @@
   },
 
   {
+    "domain": ["nationalgeographic.com"],
+    "params": ["sf54352436"]
+  },
+
+  {
     "domain": ["news.microsoft.com"],
     "removeHash": true
   },
@@ -281,6 +304,11 @@
   {
     "domain": "www.pcworld.com",
     "params": ["sf61342414"]
+  },
+
+  {
+    "domain": ["pinterest.com"],
+    "params": ["nogw"]
   },
 
   {
@@ -319,6 +347,11 @@
   },
 
   {
+    "domain": ["slides.com"],
+    "removeHash": true
+  },
+
+  {
     "domain": ["thenextweb.com"],
     "removeHash": true
   },
@@ -345,6 +378,6 @@
 
   {
     "domain": ["www.youtube.com", "youtu.be"],
-    "params": ["a", "feature", "flow", "sort", "view", "index", "sns"]
+    "params": ["a", "app", "feature", "flow", "sort", "view", "index", "sns"]
   }
 ]
