@@ -973,15 +973,21 @@ ${searchString}`);
 
       this._timerEnd(fnName);
 
-      let flattenedUrlObjects = R.flatten(reply);
+      const flattenedUrlObjectsUnfiltered = R.flatten(reply);
 
       // Remove rejected urls.
-      flattenedUrlObjects = R.reject(R.isNil, flattenedUrlObjects);
+      let flattenedUrlObjects = R.reject(R.isNil, flattenedUrlObjectsUnfiltered);
 
       // Filter out old urls.
-      winston.debug(`Twitter URLs before stale filter: ${flattenedUrlObjects.length}`);
       flattenedUrlObjects = this.filterStaleUrls(flattenedUrlObjects, 'articleTimestamp');
-      winston.debug(`Twitter URLs after stale filter: ${flattenedUrlObjects.length}`);
+      const staleURLObjects = R.differenceWith((x, y) => x.url === y.url, flattenedUrlObjectsUnfiltered, flattenedUrlObjects);
+      const staleURLs = R.map((obj) => {
+        const timestamp = new Date(obj.articleTimestamp);
+        const url = obj.url;
+        return `${timestamp}: ${url}`
+      }, staleURLObjects);
+
+      winston.debug(`${fnName}: ${staleURLs.length} stale Twitter urls`, JSON.stringify(staleURLs, null, 2));
 
       // Filter out urls not articles (e.g. tweets themselves).
       flattenedUrlObjects = this.filterNonArticles(flattenedUrlObjects);
@@ -1349,7 +1355,7 @@ ${searchString}`);
 
     const key = 'pocketTimeAdded';
     let arr = R.pluck(key, urlObjects);
-    arr = arr.map((ar) => R.prop('length', ar));
+    arr = arr.map((ar) => ar && R.prop('length', ar));
 
     return this.getStandardizedSegments(arr);
   }
@@ -1543,7 +1549,7 @@ ${searchString}`);
     .then((pocketAPIResponse) => {
       this._timerEnd(fnName);
 
-      winston.debug(`${fnName} pocket response for ${username} ${pocketAPIResponse.status} ${pocketAPIResponse.complete} ${pocketAPIResponse.error}`);
+      winston.debug(`${fnName} pocket response for ${username} status: ${pocketAPIResponse.status} complete: ${pocketAPIResponse.complete} error: ${pocketAPIResponse.error}`);
 
       return this.pocketToURLs(pocketAPIResponse, {
         tag,
@@ -1591,14 +1597,14 @@ ${searchString}`);
 
     //winston.debug(fnName);
 
-    let pocketURLs = R.values(pocketAPIResponse.list);
+    const pocketURLsUnfiltered = R.values(pocketAPIResponse.list);
 
     // Filter out old urls.
-    winston.debug(`Pocket URLs before stale filter: ${pocketURLs.length}`);
-    pocketURLs = this.filterStaleUrls(pocketURLs, (obj) => R.prop('time_added', obj) * 1000);
-    winston.debug(`Pocket URLs after stale filter: ${pocketURLs.length}`);
-
-    //winston.debug(`${pocketURLs.length} Pocket links returned before processing.`);
+    let pocketURLs = this.filterStaleUrls(pocketURLsUnfiltered, (obj) => R.prop('time_added', obj) * 1000);
+    const stalePocketURLObjects = R.differenceWith((x, y) => x.url === y.url, pocketURLsUnfiltered, pocketURLs);
+    const stalePocketURLs = R.pluck('url', stalePocketURLObjects);
+    winston.debug(`${fnName}: ${stalePocketURLs.length} stale Pocket urls found`, stalePocketURLs);
+    winston.debug(`${pocketURLs.length} Pocket links returned before processing.`);
 
     const parallelFns = pocketURLs.map((obj) => (parallelCb) => {
       const urlObj = this.pocketToURL(obj, args, parallelCb);
