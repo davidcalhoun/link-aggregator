@@ -171,7 +171,35 @@ describe('scraper', function() {
   describe('getPageExcerpt', function() {
     let $;
 
-    it('strips HTML', () => {
+    it('preserves HTML entities', () => {
+      const expectedResult = 'webpack, without the &lt;code&gt;pack&lt;/code&gt;';
+      const body = `<meta property="og:description" content="${expectedResult}">`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getPageExcerpt($);
+
+      assert.deepEqual(result, expectedResult);
+    });
+
+    it('strips HTML <strong>', () => {
+      const expectedResult = 'Combine the transparency of a PNG with the compression of a JPEG. Based on the idea from';
+      const expectedResult2 = 'asdasd';
+      const body = `<meta property="og:description" content="${expectedResult} &lt;strong&gt;${expectedResult2}&lt;/strong&gt;">`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getPageExcerpt($);
+
+      assert.deepEqual(result, `${expectedResult} ${expectedResult2}`);
+    });
+
+    it('strips incomplete HTML <strong>', () => {
+      const expectedResult = 'Combine the transparency of a PNG with the compression of a JPEG. Based on the idea from';
+      const body = `<meta property="og:description" content="${expectedResult}&lt;/strong&gt;">`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getPageExcerpt($);
+
+      assert.deepEqual(result, expectedResult);
+    });
+
+    it('strips HTML links', () => {
       const expectedResult = 'foo foo bar bar';
       const body = `<meta property="og:description" content="${expectedResult}&lt;a href=&quot;https://www.reddit.co" />`;
       $ = cheerio.load(body);
@@ -224,6 +252,77 @@ describe('scraper', function() {
         });
       });
     });
+
+    it('prefers date over meta tags', () => {
+      const body = `
+<!DOCTYPE html><html lang="en-US"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width"><link rel="dns-prefetch" href="https://az813057.vo.msecnd.net"><link rel="dns-prefetch" href="https://c.microsoft.com"><link rel="dns-prefetch" href="https://www.google-analytics.com"><link rel="dns-prefetch" href="https://c1.microsoft.com"><link rel="dns-prefetch" href="https://cs.microsoft.com"><link rel="dns-prefetch" href="https://c.bing.com"><meta name="theme-color" content="#0078d7"><link rel="manifest" href="https://az813057.vo.msecnd.net/site.689f471.webmanifest"><meta name="msapplication-config" content="https://az813057.vo.msecnd.net/browserconfig.668a6fd.xml"><link rel="apple-touch-icon" href="https://az813057.vo.msecnd.net/images/apple-touch-icon.b3e6e82.png"><link rel="icon" href="https://az813057.vo.msecnd.net/images/favicon-96.cabc29b.png">
+  <link rel="canonical" href="https://developer.microsoft.com/en-us/microsoft-edge/platform/issues/13148742/"/>
+   <title>Twitter not recognising line break after url - Microsoft Edge Development</title><meta name="description" content=""><meta name="keywords" content="edgehtml, issue, bug, issues, bugs, public bugs, standards, rendering"><link rel="stylesheet" href="https://az813057.vo.msecnd.net/styles/edge.b8487cd.css"><link rel="stylesheet" href="https://az813057.vo.msecnd.net/styles/bugs.80044b2.css"><link rel="stylesheet" href="https://az813057.vo.msecnd.net/styles/markdown.1d75dd2.css"><!--[if IE 9]>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/classlist/2014.01.31/classList.min.js"></script>
+  <![endif]--></head><body><div class="bg-wrap"> <div id="msccBanner" class="alert" role="alert" aria-live="assertive" hidden><div class="alert__message"><div class="icon--info" aria-label="Info message"></div><p class="alert__message--body">This site uses cookies for analytics, personalized content and ads. By continuing to browse this site, you agree to this use. <span class="alert__message--anchor"> <a id="msccLearnMore" href="https://privacy.microsoft.com/en-US/">Learn more</a></span></p></div></div><header class="header"><div class="nav-bar container"><p class="header__logo title"><a href="https://www.microsoft.com/">Microsoft</a></p><nav aria-label="microsoft developer" class="nav--global" data-menu><ul class="nav__navbar"><li class="navbar__navitem"><a role="button" aria-haspopup="true" aria-expanded="false" aria-controls="submenu-technologies" href="#" class="navitem__button">Technologies</a><ul role="group" id="submenu-technologies" class="navbar__submenu" aria-hidden="true"><li class="navbar__navitem"><a role="button" aria-haspopup="true" aria-expanded="false" aria-controls="submenu-windows" class="navitem__button" href="/windows/">Windows</a><ul role="group" id="submenu-windows" class="navbar__submenu" aria-hidden="true"><li><a href="/windows">Apps</a></li><li><a href="/windows/iot">Internet of Things</a></li><li><a href="/windows/holographic">Holographic</a></li><li><a href="/microsoft-edge/">Microsoft Edge</a></li><li><a href="/windows/hardware">Hardware</a></li><li><a href="https://technet.microsoft.com/windows">IT Center</a></li></ul></li><li class="navbar__navitem"><a role="button" aria-haspopup="true" aria-expanded="false" aria-controls="submenu-azure" class="navitem__button" href="https://azure.microsoft.com/documentation/">Microsoft Azure</a><ul role="group" id="submenu-azure" class="navbar__submenu" aria-hidden="true"><li><a href="https://azure.microsoft.com/overview/what-is-azure/">What is Azure</a></li><li><a href="https://azure.microsoft.com/services/">Products</a></li><li><a href="https://azure.microsoft.com/solutions/?v=4">Solutions</a></li><li><a href="https://azure.microsoft.com/pricing/">Pricing</a></li><li><a href="https://azure.microsoft.com/free">Create a free account</a></li></ul></li><li class="navbar__navitem"><a role="button" aria-haspopup="true" aria-expanded="false" aria-controls="submenu-vs" class="navitem__button" href="https://msdn.microsoft.com/vstudio">Visual Studio</a><ul role="group" id="submenu-vs" class="navbar__submenu" aria-hidden="true"><li><a href="https://www.visualstudio.com/">Visual Studio</a></li><li><a href="https://www.visualstudio.com/vs/">Visual Studio IDE</a></li><li><a href="https://www.visualstudio.com/team-services/">Visual Studio Team Services</a></li><li><a href="https://code.visualstudio.com/">Visual Studio Code</a></li><li><a href="https://www.xamarin.com/">Xamarin</a></li><li><a href="https://www.visualstudio.com/dev-essentials/">Visual Studio Dev Essentials</a></li><li><a href="https://www.visualstudio.com/subscriptions/">Subscriptions</a></li></ul></li><li class="navbar__navitem"><a role="button" aria-haspopup="true" aria-expanded="false" aria-controls="submenu-office" class="navitem__button" href="https://dev.office.com/">Office</a><ul role="group" id="submenu-office" class="navbar__submenu" aria-hidden="true"><li><a href="http://dev.office.com/">Office Dev Center</a></li><li><a href="https://technet.microsoft.com/en-us/office/dn788774">Office 365 for IT pros</a></li><li><a href="https://dev.office.com/getting-started/addins">Word/Excel/PowerPoint</a></li><li><a href="https://graph.microsoft.io/">Microsoft Graph</a></li><li><a href="https://dev.outlook.com/">Outlook</a></li><li><a href="https://dev.onedrive.com/">OneDrive/Sharepoint</a></li><li><a href="https://dev.office.com/skype">Skype</a></li></ul></li><li class="navbar__navitem"><a role="button" aria-haspopup="true" aria-expanded="false" aria-controls="submenu-services" class="navitem__button" href="/">Services</a><ul role="group" id="submenu-services" class="navbar__submenu" aria-hidden="true"><li><a href="https://developer.microsoft.com/store">Store</a></li><li><a href="/cortana">Cortana</a></li><li><a href="https://bing.com/dev/dev-center">Bing</a></li><li><a href="https://azure.microsoft.com/services/application-insights">Application Insights</a></li></ul></li><li role="presentation" class="navbar__navitem">&nbsp;</li><li role="presentation" class="navbar__navitem">&nbsp;</li><li role="presentation" class="navbar__navitem">&nbsp;</li><li role="presentation" class="navbar__navitem">&nbsp;</li><li role="presentation" class="navbar__navitem">&nbsp;</li></ul></li><li class="navbar__navitem"><a role="button" aria-haspopup="true" aria-expanded="false" aria-controls="submenu-documentation" href="#" class="navitem__button">Documentation</a><ul role="group" id="submenu-documentation" class="navbar__submenu" aria-hidden="true"><li class="navbar__navitem"><a href="https://msdn.microsoft.com/">Microsoft Developer Network</a></li><li class="navbar__navitem"><a href="https://technet.microsoft.com/">TechNet</a></li><li class="navbar__navitem"><a role="button" aria-haspopup="true" aria-expanded="false" aria-controls="submenu-platforms" class="navitem__button" href="https://docs.microsoft.com/">Platforms</a><ul role="group" id="submenu-platforms" class="navbar__submenu" aria-hidden="true"><li><a href="https://docs.microsoft.com/en-us/azure/">Microsoft Azure</a></li><li><a href="https://www.visualstudio.com/vs/getting-started/">Visual Studio</a></li><li><a href="https://www.visualstudio.com/docs/overview">Visual Studio Team Services</a></li><li><a href="https://docs.microsoft.com/en-us/windows">Windows</a></li><li><a href="http://dev.office.com/getting-started">Office</a></li><li><a href="https://developer.microsoft.com/en-us/">All Developer Centers</a></li></ul></li><li class="navbar__navitem"><a role="button" aria-haspopup="true" aria-expanded="false" aria-controls="submenu-ittech" class="navitem__button" href="https://technet.microsoft.com/en-us/bb421517.aspx?wt.svl=more_centers_link">IT TechCenters</a><ul role="group" id="submenu-ittech" class="navbar__submenu" aria-hidden="true"><li><a href="https://technet.microsoft.com/windows">Windows IT Center</a></li><li><a href="https://technet.microsoft.com/en-us/office/dn788774">Office 365 for IT Pros</a></li><li><a href="https://technet.microsoft.com/en-us/bb421517.aspx?wt.svl=more_centers_link">All IT TechCenters</a></li></ul></li><li class="navbar__navitem"><a role="button" aria-haspopup="true" aria-expanded="false" aria-controls="submenu-downloads" class="navitem__button" href="https://dev.office.com/">Downloads</a><ul role="group" id="submenu-downloads" class="navbar__submenu" aria-hidden="true"><li><a href="https://www.microsoft.com/en-us/download/developer-tools.aspx">Microsoft Download Center</a></li><li><a href="https://azure.microsoft.com/en-us/downloads/">Microsfot Azure</a></li><li><a href="https://www.visualstudio.com/en-us/downloads/download-visual-studio-vs">Visual Studio</a></li><li><a href="https://msdn.microsoft.com/en-us/microsoft-sdks-msdn">SDKs</a></li><li><a href="https://developer.microsoft.com/en-us/windows/downloads">Windows</a></li></ul></li><li class="navbar__navitem"><a href="https://code.msdn.microsoft.com/">Code samples</a></li><li class="navbar__navitem"><a href="https://technet.microsoft.com/scriptcenter">PowerShell scripts</a></li></ul></li><li class="navbar__navitem"><a role="button" aria-haspopup="true" aria-expanded="false" aria-controls="submenu-resources" href="#" class="navitem__button">Resources</a><ul role="group" id="submenu-resources" class="navbar__submenu" aria-hidden="true"><li class="navbar__navitem"><a role="button" aria-haspopup="true" aria-expanded="false" aria-controls="submenu-blogs" class="navitem__button" href="#">Blogs</a><ul role="group" id="submenu-blogs" class="navbar__submenu" aria-hidden="true"><li><a href="https://azure.microsoft.com/en-us/blog/">Microsoft Azure</a></li><li><a href="https://blogs.msdn.microsoft.com/visualstudio/">Visual Studio</a></li><li><a href="https://blogs.msdn.microsoft.com/visualstudioalm/">Visual Studio Team Services</a></li><li><a href="https://blogs.msdn.microsoft.com/developer-tools/">Developer tools</a></li><li><a href="https://blogs.technet.microsoft.com/server-management/">Server &amp; management</a></li><li><a href="https://blogs.windows.com/buildingapps/">Windows</a></li></ul></li><li class="navbar__navitem"><a role="button" aria-haspopup="true" aria-expanded="false" aria-controls="submenu-communityforums" class="navitem__button" href="#">Community &amp; Forums</a><ul role="group" id="submenu-communityforums" class="navbar__submenu" aria-hidden="true"><li><a href="https://social.msdn.microsoft.com/Forums/en-US/home">Developers</a></li><li><a href="https://social.technet.microsoft.com/Forums/en-US/home">TechNet</a></li><li><a href="https://techcommunity.microsoft.com/">Microsoft Tech Community</a></li></ul></li><li class="navbar__navitem"><a role="button" aria-haspopup="true" aria-expanded="false" aria-controls="submenu-subscriptions" class="navitem__button" href="#">Subscriptions</a><ul role="group" id="submenu-subscriptions" class="navbar__submenu" aria-hidden="true"><li><a href="https://msdn.microsoft.com/subscriptions">MSDN subscriptions</a></li><li><a href="https://www.itprocloudessentials.com/">IT Pro Cloud Essentials</a></li></ul></li><li class="navbar__navitem"><a role="button" aria-haspopup="true" aria-expanded="false" aria-controls="submenu-training" class="navitem__button" href="#">Training</a><ul role="group" id="submenu-training" class="navbar__submenu" aria-hidden="true"><li><a href="https://mva.microsoft.com/">Microsoft Virtual Academy</a></li><li><a href="http://www.itprocareercenter.com/">IT Pro Career Center</a></li></ul></li><li class="navbar__navitem"><a href="https://www.microsoft.com/evalcenter/">TechNet Evaluation Center</a></li><li class="navbar__navitem"><a href="https://channel9.msdn.com/">Channel 9</a></li></ul></li></ul></nav><form role="search" class="form-search header__form-search" action="https://social.msdn.microsoft.com/search/windows" method="get"><input name="query" type="search" aria-label="search" required> <input name="refinement" type="hidden" value="183"> <button type="submit" aria-label="search" class="button-search"></button></form><button class="header__toggle icon--global-nav-button" aria-label="Menu"></button>   <a class="user-account" href="/en-us/microsoft-edge/users/signin/?redirect=/en-us/microsoft-edge/platform/issues/13148742/">Sign in</a> </div><nav aria-label="Microsoft Edge dev site" class="nav clear" data-menu><ul class="nav__navbar"><li class="navbar__navitem"><h1 class="edge-wordmark"><a href="/en-us/microsoft-edge/">Microsoft Edge</a></h1></li><li class="navbar__navitem navitem--web-platform"><a role="button" aria-haspopup="true" aria-expanded="false" aria-controls="submenu-platform" href="/en-us/microsoft-edge/platform/" class="navitem__button">Web platform</a><ul role="group" id="submenu-platform" class="navbar__submenu" aria-hidden="true"><li><a href="/en-us/microsoft-edge/platform/">Web platform</a></li><li><a href="/en-us/microsoft-edge/platform/status/">Status</a></li><li><a href="/en-us/microsoft-edge/platform/changelog/">Changelog</a></li><li><a href="/en-us/microsoft-edge/platform/issues/">Issues</a></li><li><a href="/en-us/microsoft-edge/platform/data/">Data</a></li><li><a href="https://docs.microsoft.com/en-us/microsoft-edge">Documentation</a></li><li><a href="/en-us/microsoft-edge/platform/faq/">FAQ</a></li><li><a href="https://developer.microsoft.com/windows/bridges/hosted-web-apps" target="_blank" rel="noopener noreferrer">Web Apps on Windows</a></li></ul></li><li class="navbar__navitem navitem--news-and-community"><a role="button" aria-haspopup="true" aria-expanded="false" aria-controls="submenu-community" href="/en-us/microsoft-edge/community/" class="navitem__button">Community</a><ul role="group" id="submenu-community" class="navbar__submenu" aria-hidden="true"><li><a href="/en-us/microsoft-edge/community/">Blogs</a></li><li><a href="/en-us/microsoft-edge/community/oss/">Open source projects</a></li><li><a href="https://events.microsoft.com/" target="_blank" rel="noopener noreferrer">Events</a></li><li><a href="/en-us/microsoft-edge/community/careers/">Careers</a></li><li><a href="/en-us/microsoft-edge/community/videos/">Videos</a></li></ul></li><li class="navbar__navitem navitem--tools"><a role="button" aria-haspopup="true" aria-expanded="false" aria-controls="submenu-tools" href="/en-us/microsoft-edge/tools/" class="navitem__button">Tools</a><ul role="group" id="submenu-tools" class="navbar__submenu" aria-hidden="true"><li><a href="/en-us/microsoft-edge/tools/">All tools</a></li><li><a href="/en-us/microsoft-edge/tools/remote/">Remote testing</a></li><li><a href="/en-us/microsoft-edge/tools/vms/">Virtual machines</a></li><li><a href="/en-us/microsoft-edge/tools/staticscan/">Site scan</a></li><li><a href="/en-us/microsoft-edge/tools/screenshots/">Browser screenshots</a></li><li><a href="https://docs.microsoft.com/en-us/microsoft-edge/f12-devtools-guide">F12 Dev Tools</a></li><li><a href="/en-us/microsoft-edge/tools/webdriver/">WebDriver</a></li></ul></li><li class="navbar__navitem navitem--testdrive"><a href="/en-us/microsoft-edge/testdrive/">Demos</a></li><li class="navbar__navitem navitem--testdrive"><a href="/en-us/microsoft-edge/support/">Feedback & support</a></li></ul></nav></header>    <script type="template" id="new-attachment-template" data-default-remove-title="Remove"><label id="attachment-label-%attachmentIDIterator%" class="visually-hidden" aria-label="attachment-input-%attachmentIDIterator%">New attachment</label>
+  <input type="file" name="attachment" id="attachment-input-%attachmentIDIterator%" class="attachment-input" aria-labelledby="attachment-label-%attachmentIDIterator%" />
+  <button tabindex="-1" class="button--icon icon--delete remove-file" title="Remove" aria-controls="attachment-input-%attachmentIDIterator%">
+    <span class="visually-hidden">Remove</span>
+  </button></script><main class="container"><article class="content" aria-labelledby="page-heading"><nav class="container breadcrumb" aria-label="breadcrumbs"><ul> <li><a href="../../../">Home</a></li>  <li><a href="../../">Platform</a></li>  <li><a href="../">Issues</a></li>  <li aria-current="page">Issue</li> </ul></nav><header class="page-header--has-action"><div class="page-header__text subsection"><div class="page-header-row"><h1 id="page-heading" class="subheading long-string edit-content">Twitter not recognising line break after url</h1></div><p><span id="status-container"> </span><span class="subtitle issue-subtitle"><span class="page-title__bug-id">Issue #13148742</span> <span id="assignedTo">  <span class="page-title__assignment">• Assigned to James M.</span>   </span><span id="see-duplicate"></span></span></p></div><div class="page-header__actions actions"><a href="/en-us/microsoft-edge/platform/issues/new/" class="button button--primary">Open new issue</a>  <p class="browse-all-msg"><a href="/en-us/microsoft-edge/platform/issues/">Browse all tracked issues</a></p></div></header><section class="section"><div class="layout layout--basic--alt"><div class="module module--secondary"><section class="subsection meta-box"><h2 class="title subsection__header">Details</h2><div id="bug-details" class="subsection__body edit-content"><dl>    <dt>Created</dt><dd>Aug 8, 2017</dd><dt>Privacy</dt><dd id="privacy"> This issue is public. </dd><div id="browser-list" class="detail-block"><dt>Found in</dt><dd><ul class="list--browser-icons"><li title="Microsoft Edge"><img src="https://az813057.vo.msecnd.net/images/edge_32x32.2268fcf.png" srcset="https://az813057.vo.msecnd.net/images/edge_64x64.d37f8fa.png 2x,https://az813057.vo.msecnd.net/images/edge_128x128.ab2b380.png 3x" alt="Microsoft Edge"></li>     </ul></dd></div><div id="standard-compliance" class="detail-block"></div><div id="found-in-build" class="detail-block"><dt>Found in build #</dt><dd id="buildNumber" class="ellipsis">16.16257</dd></div><div id="fixed-in-build" class="detail-block"></div><dt>Reports</dt><dd id="reported-by-num">Reported by 1 person</dd></dl><p><a href="/en-us/microsoft-edge/users/signin/?redirect=/en-us/microsoft-edge/platform/issues/13148742/">Sign in</a> to watch or report this issue.</p></div></section></div><div class="module module--primary wrap-text"><section class="subsection"><h2 class="title subsection__header header--alt">Steps to reproduce</h2><div class="subsection__body"><div id="repro-steps" class="bug-description base edit-content"><p>Steps to reproduce:</p>
+<ol>
+<li>Go to Twitter, start a new tweet</li>
+<li>Enter Text, hit enter</li>
+<li>Copy URL, hit enter</li>
+<li>Write more</li>
+</ol>
+<p>There is no line-break added after the URL, the text just appears after it. You need to press space after the URL to get one.</p>
+</div></div></section><section class="subsection subsection--attachments"><h2 class="title subsection__header header--alt">Attachments</h2><div class="subsection__body"><div class="bug-attachments"><h4 class="item-title">0 attachments</h4><ul class="bare list--attachments"></ul></div></div></section><section class="subsection"><h2 class="title subsection__header header--alt">Comments and activity</h2><div class="subsection__body" id="activity-container" data-href="/api/platform/issues/13148742/"><ul class="bare activity-feed" id="history-list">   <li class="activity activity--changeset" data-fte="true">  <img src="https://az813057.vo.msecnd.net/images/msedge-avatar.bcc1435.png" alt="" role="none" class="avatar">    <span class="badge activity__team-label">Microsoft Edge Team</span>   <p class="activity__byline"><span class="activity__name">James M.</span> <span class="caption activity__date">Aug 8, 2017</span> <span class="activity__date__raw">2017-08-08T21:45:09.823Z</span></p><p class="activity__change">Changed <strong>Assigned To</strong> to &ldquo;James M.&rdquo;</p> </li>   </ul><div class="comment-form-wrap"><p class="subtitle--alt">You need to sign in to your Microsoft account to add a comment.</p><p><a href="/en-us/microsoft-edge/users/signin/?redirect=/en-us/microsoft-edge/platform/issues/13148742/" class="button">Sign in</a></p> <input type="hidden" name="lastCommentDate" class="visibility-hidden" value="2017-08-08T21:45:09.823Z"></div></div></section></div></div></section></article><div class="modal" id="modal-root-cause" role="alertdialog" aria-hidden="true" aria-describedby="root-cause-modal-body" aria-labelledby="root-cause-modal-title"><div tabindex="-1" class="modal-dialog"><h2 class="subtitle modal__header" id="root-cause-modal-title">Suggesting a root cause</h2><div class="modal__body" id="root-cause-modal-body"><p>Help make the web just work! Identifying a root cause helps us resolve issues more quickly. If you have a theory for the root cause or have identified and reduced a reproducible bug, include a description and any relevant code or URLs in your comment and mark it as a root cause suggestion. Our engineers will take a look and update the bug with the results of our investigation.</p></div><div class="modal__footer"><button type="cancel">Close this</button></div></div></div></main> </div><footer class="footer"><div class="container"><div class="follow"><p class="follow--title" id="follow-us">Follow us:</p><ul class="list--follow"><li><a id="twitter" aria-label="on Twitter" aria-labelledby="follow-us twitter" class="social__icon--twitter" href="https://twitter.com/MSEdgeDev" title="Twitter" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 22.1 18"><use xlink:href="/en-us/microsoft-edge/images/social-icons.svg#twitter-icon"/></svg></a></li><li><a id="stackoverflow" aria-label="on Stack Overflow" aria-labelledby="follow-us stackoverflow" class="social__icon--stackoverflow" href="https://stackoverflow.com/questions/tagged/microsoft-edge+internet-explorer" title="Stack Overflow" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 15.7 20"><use xlink:href="/en-us/microsoft-edge/images/social-icons.svg#so-icon"/></svg></a></li><li><a id="github" aria-label="on GitHub" aria-labelledby="follow-us github" class="social__icon--github" href="https://github.com/MicrosoftEdge/" title="GitHub" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 20.5 20"><use xlink:href="/en-us/microsoft-edge/images/social-icons.svg#github-icon"/></svg></a></li><li><a id="rss" aria-label="on our blog" aria-labelledby="follow-us rss" class="social__icon--rss" href="https://blogs.windows.com/msedgedev/feed/" title="RSS" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 17.9 18"><use xlink:href="/en-us/microsoft-edge/images/social-icons.svg#rss-icon"/></svg></a></li></ul></div><ul class="footer__links"><li class="footer__feedback"><a href="/en-us/microsoft-edge/support/">Feedback & support</a></li><li><a href="https://go.microsoft.com/fwlink/p/?linkid=248155">Terms of use</a></li><li><a href="https://www.microsoft.com/library/toolbar/3.0/trademarks/en-us.mspx">Trademarks</a></li><li><a href="https://go.microsoft.com/fwlink/?LinkId=521839">Privacy and cookies</a></li></ul><small class="footer__copyright">© 2017 Microsoft</small><p class="footer__text">Hello from Seattle</p></div></footer><script defer="defer" src="https://az813057.vo.msecnd.net/scripts/app.5b41bf4.js"></script>
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.0.6/handlebars.min.js" defer="defer"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.14.1/moment.min.js" defer="defer"></script><script src="/en-us/microsoft-edge/api/templates/issues-comment,issues-follow-form,issues-follow-message,issues-browserlist,issues-standardcompliance,issues-foundinbuild/?ts=66ae657f5655e6f3461e98d968d7eeea6704234f" defer="defer"></script><script src="/en-us/microsoft-edge/api/templates/issues-status,issues-reports,issues-assigned-to,issues-duplicate,issues-activityset,issues-activityset-item,issues-fixedinbuild/?ts=66ae657f5655e6f3461e98d968d7eeea6704234f" defer="defer"></script><script src="/en-us/microsoft-edge/api/partials/issues-avatar,issues-activityset-item/?ts=66ae657f5655e6f3461e98d968d7eeea6704234f" defer="defer"></script><script src="/en-us/microsoft-edge/api/helpers/ifExists,ifeq,dateFormat,issuesStatus/?ts=66ae657f5655e6f3461e98d968d7eeea6704234f" defer="defer"></script><script defer="defer" src="https://az813057.vo.msecnd.net/scripts/issues.cf623f7.js"></script>   <script src="https://cdn.jsdelivr.net/remarkable/1.6.0/remarkable.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/highlight.min.js"></script><script>var edgePortal=window.edgePortal||{};!function(){var l=new Remarkable("full",{breaks:!0,html:!1,langPrefix:"lang-",linkify:!0,typographer:!0,xhtmlOut:!1,highlight:function(l,t){try{return hljs.highlight(t,l).value}catch(t){return hljs.highlightAuto(l).value}}});edgePortal.markdown=l}()</script>
+ </body></html>
+`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getPublishedTime($);
+      const resultS = parseInt(result / 1000);
+      assert.deepEqual(resultS, 1502175600);
+    });
+
+
+    it('nested date classes prefers date in h2', () => {
+      const body = `
+<div class="date-outer">
+        
+<h2 class='date-header'><span>Monday, 14 August 2017</span></h2>
+
+          <div class="date-posts">
+        
+<div class='post-outer'>
+<div class='post hentry'>
+`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getPublishedTime($);
+      const resultS = parseInt(result / 1000);
+      assert.deepEqual(resultS, 1502694000);
+    });
+
+    it('gives preference to nonempty time tags', () => {
+      const body = `
+<time datetime="2017-07-26 03:00:18"></time>
+<time datetime="2017-07-19 17:36:04"></time>
+<div class="byline">
+  Posted <time datetime="2017-08-03" class="timestamp">Aug 3, 2017</time> by <a href="/author/ingrid-lunden/" title="Posts by Ingrid Lunden" onclick="s_objectID='river_author';" rel="author">Ingrid Lunden</a> <span class="twitter-handle">(<a href="https://twitter.com/ingridlunden" rel="external">@ingridlunden</a>)</span></div>
+`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getPublishedTime($);
+      const resultS = parseInt(result / 1000);
+      assert.deepEqual(resultS, 1501743600);
+    });
+
+
+    it('time with brackets and junk around it', () => {
+      const body = `
+<div class="date-and-tags" data-reactid="28"><!-- react-text: 29 -->[<!-- /react-text --><!-- react-text: 30 -->2017-07-22<!-- /react-text --><!-- react-text: 31 -->] <!-- /react-text --><a href="" data-reactid="32">dev</a><!-- react-text: 33 -->, <!-- /react-text --><a href="" data-reactid="34">javascript</a><!-- react-text: 35 -->, <!-- /react-text --><a href="" data-reactid="36">regexp</a><!-- react-text: 37 -->, <!-- /react-text --><a href="" data-reactid="38">template literals</a></div>
+`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getPublishedTime($);
+      const resultS = parseInt(result / 1000);
+      assert.deepEqual(resultS, 1500706800);
+    });
+
 
     it('prefers the first occurring published-at time', () => {
       const body = `<span class="published-at">Jul 28, 2017</span>
@@ -293,12 +392,28 @@ describe('scraper', function() {
       assert.deepEqual(resultS, 1501311600);
     });
 
-    it('metadata class', () => {
+    it('metadata class 1', () => {
       const body = `<p class="metadata">Posted 14-Aug 2017 under code.</p>`;
       $ = cheerio.load(body);
       const result = linkAggregator.getPublishedTime($);
       const resultS = parseInt(result / 1000);
-      assert.deepEqual(resultS, 1502744400);
+      assert.deepEqual(resultS, 1502694000);
+    });
+
+    it('metadata class 2', () => {
+      const body = `<p class="metadata">14-Aug 2017</p>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getPublishedTime($);
+      const resultS = parseInt(result / 1000);
+      assert.deepEqual(resultS, 1502694000);
+    });
+
+    it('metadata class 3', () => {
+      const body = `<p class="metadata">Posted 14-Aug 2017 under code.</p>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getPublishedTime($);
+      const resultS = parseInt(result / 1000);
+      assert.deepEqual(resultS, 1502694000);
     });
 
     
@@ -356,8 +471,62 @@ describe('scraper', function() {
     let $;
     const expectedResult = 'twitteruser';
 
+    it('ignores Twitter names in comments (class)', () => {
+      const body = `
+  <div class="single-comment-node root  comment-deep-0"" data-comment-id="2591" data-comment-author-id="1737">
+      <div class="inner-comment">
+        <div class="details">
+          <a href="/maxart2501">
+            <img class="profile-pic" src="https://res.cloudinary.com/practicaldev/image/fetch/s--xVPVbw2O--/c_fill,f_auto,fl_progressive,h_50,q_auto,w_50/https://thepracticaldev.s3.amazonaws.com/uploads/user/profile_image/1737/2140858.jpeg" />
+            <span class="comment-username">Massimo Artizzu</span>
+          </a>
+            <a href="http://twitter.com/MaxArt2501"><img class="icon-img" src="https://practicaldev-herokuapp-com.global.ssl.fastly.net/assets/twitter-logo-4f403dcfabe199e4eb9a484b701775e631514af75a980b2744a1d0cbfbaaa706.svg" alt="Twitter logo" /></a>
+            <a href="http://github.com/MaxArt2501"><img class="icon-img" src="https://practicaldev-herokuapp-com.global.ssl.fastly.net/assets/github-logo-6a5bca60a4ebf959a6df7f08217acd07ac2bc285164fae041eacb8a148b1bab9.svg" alt="Github logo" /></a>
+          <a href="/buntine/dom-elements-with-ids-are-global-variables/comments/3lh" class="permalink">
+            <img class="icon-img" src="https://practicaldev-herokuapp-com.global.ssl.fastly.net/assets/link-e52c429ee7fe82bfec2d6542cc7b4a04b7d9f886827998833080ac23fcd2f169.svg" alt="Link" />
+          </a>
+        </div>
+`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getTwitterAuthor($);
+
+      assert.deepEqual(result, '');
+    });
+
+    it('ignores Twitter names in comments (id)', () => {
+      const body = `
+  <div id="comment-node-2591">
+      <div class="">
+        <div class="details">
+          <a href="/maxart2501">
+            <img class="profile-pic" src="https://res.cloudinary.com/practicaldev/image/fetch/s--xVPVbw2O--/c_fill,f_auto,fl_progressive,h_50,q_auto,w_50/https://thepracticaldev.s3.amazonaws.com/uploads/user/profile_image/1737/2140858.jpeg" />
+            <span class="comment-username">Massimo Artizzu</span>
+          </a>
+            <a href="http://twitter.com/MaxArt2501"><img class="icon-img" src="https://practicaldev-herokuapp-com.global.ssl.fastly.net/assets/twitter-logo-4f403dcfabe199e4eb9a484b701775e631514af75a980b2744a1d0cbfbaaa706.svg" alt="Twitter logo" /></a>
+            <a href="http://github.com/MaxArt2501"><img class="icon-img" src="https://practicaldev-herokuapp-com.global.ssl.fastly.net/assets/github-logo-6a5bca60a4ebf959a6df7f08217acd07ac2bc285164fae041eacb8a148b1bab9.svg" alt="Github logo" /></a>
+          <a href="/buntine/dom-elements-with-ids-are-global-variables/comments/3lh" class="permalink">
+            <img class="icon-img" src="https://practicaldev-herokuapp-com.global.ssl.fastly.net/assets/link-e52c429ee7fe82bfec2d6542cc7b4a04b7d9f886827998833080ac23fcd2f169.svg" alt="Link" />
+          </a>
+        </div>
+`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getTwitterAuthor($);
+
+      assert.deepEqual(result, '');
+    });
+
+    it('ignores links referring to twitter.com', () => {
+      const body = `
+<a href="http://www.npr.org/sections/money/2014/10/21/357629765/when-women-stopped-coding?utm_campaign=storyshare&utm_source=twitter.com&utm_medium=social">despite declining in other STEM fields</a>
+`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getTwitterAuthor($);
+
+      assert.deepEqual(result, '');
+    });
+
     it('handles hashbangs', () => {
-      const body = `<a class="icon-twitter" href="http://twitter.com/#!/twitteruser"></a>`;
+      const body = `<div><a class="icon-twitter" href="http://twitter.com/#!/twitteruser"></a></div>`;
       $ = cheerio.load(body);
       const result = linkAggregator.getTwitterAuthor($);
 
@@ -394,7 +563,7 @@ describe('scraper', function() {
     });
 
     it('gets author from share link', () => {
-      const body = `<a href="https://twitter.com/share?text=Women%20Saved%20the%20Affordable%20Care%20Act&amp;via=twitteruser&amp;url=http%3A%2F%2Fwww.gq.com%2Fstory%2Fwomen-saved-the-affordable-care-act" data-pin-do="" target="_blank" aria-label="Twitter" data-reactid="86"><span class="icon" data-reactid="87"></span><span class="label" data-reactid="88">Twitter</span></a>`;
+      const body = `<div><a href="https://twitter.com/share?text=Women%20Saved%20the%20Affordable%20Care%20Act&amp;via=twitteruser&amp;url=http%3A%2F%2Fwww.gq.com%2Fstory%2Fwomen-saved-the-affordable-care-act" data-pin-do="" target="_blank" aria-label="Twitter" data-reactid="86"><span class="icon" data-reactid="87"></span><span class="label" data-reactid="88">Twitter</span></a></div>`;
       $ = cheerio.load(body);
       const result = linkAggregator.getTwitterAuthor($);
 
@@ -421,8 +590,8 @@ describe('scraper', function() {
       });
 
       it('ignores first intent and is able to extract name from second link', () => {
-        const body = `<a href="//twitter.com/search?q=levelsio%20ARKit%20OR%20AR&src=typd">AR apps</a>
-<a href="//twitter.com/twitteruser">Twitter</a>`;
+        const body = `<div><a href="//twitter.com/search?q=levelsio%20ARKit%20OR%20AR&src=typd">AR apps</a>
+<a href="//twitter.com/twitteruser">Twitter</a></div>`;
         $ = cheerio.load(body);
         const result = linkAggregator.getTwitterAuthor($);
 
@@ -438,8 +607,7 @@ describe('scraper', function() {
       });
 
       it('extracts username from user intent', () => {
-        const body = `<a target="_blank" href="https://twitter.com/intent/user?screen_name=twitteruser" class="icon icon-circle icon-twitter"></a>
-  </div>`;
+        const body = `<div><a target="_blank" href="https://twitter.com/intent/user?screen_name=twitteruser" class="icon icon-circle icon-twitter"></a></div>`;
         $ = cheerio.load(body);
         const result = linkAggregator.getTwitterAuthor($);
 
@@ -447,7 +615,7 @@ describe('scraper', function() {
       });
 
       it('extracts username from tweet intent', () => {
-        const body = `<a href="https://twitter.com/intent/tweet?hashtags=codebrahma&original_referer=http://www.codebramha.com/&text=Check%20out%20this%20amazing%20post%20:%20&tw_p=tweetbutton&url=https://codebrahma.com/structuring-async-operations-react-redux-applications/&via=twitteruser" class="social twitter" title="Share on Twitter" target="_blank"><i class="fa fa-twitter"></i></a>`;
+        const body = `<div><a href="https://twitter.com/intent/tweet?hashtags=codebrahma&original_referer=http://www.codebramha.com/&text=Check%20out%20this%20amazing%20post%20:%20&tw_p=tweetbutton&url=https://codebrahma.com/structuring-async-operations-react-redux-applications/&via=twitteruser" class="social twitter" title="Share on Twitter" target="_blank"><i class="fa fa-twitter"></i></a></div>`;
         $ = cheerio.load(body);
         const result = linkAggregator.getTwitterAuthor($);
 
@@ -552,6 +720,19 @@ describe('scraper', function() {
   describe('getPageTitle', function() {
     let $;
     const expectedResult = 'thepagetitle';
+
+    it('trims long titles', () => {
+      const title = 'Did not check* Facebook for 2 weeks. This is my first post in a fortnight. Didn’t listen to iPod for 12d. Returning home from Paris after 10 days, everything seemed the same but different.';
+      const body = `
+
+<!DOCTYPE html><html><head><meta charset="utf-8" />
+<title>${title}${title}${title}</title>
+`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getPageTitle($);
+
+      assert.deepEqual(result, title.substr(0, 150));
+    });
 
     it('does not match multiple title tags', () => {
       const body = `

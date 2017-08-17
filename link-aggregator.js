@@ -692,7 +692,31 @@ ${searchString}`);
 [name="pubdate"],
 [property="datePublished"],
 [property="DC.date.issued"]`);
-    time = publishedTag.attr('content');
+    time = publishedTag.first().attr('content');
+
+    // Fallbacks, with highest as the top priority.
+    if (!time) {
+      const fallbackTimeTags = [
+        'time',
+        '[datetime]',
+        'h2[class*=datetime], h2[id*=datetime], h2[class*=date], h2[id*=date]',
+        '[class*=datetime], [id*=datetime], [class*=date], [id*=date]',
+        '[class*=published], [id*=published]',
+        'h2',
+        '[class*=meta], [id*=meta]'
+      ];
+
+      fallbackTimeTags.forEach((tag) => {
+        if (time) return;
+
+        const tagElts = $(tag);
+        tagElts.each((index, tagElt) => {
+          if (time) return;
+
+          time = $(tagElt).text();
+        });
+      });
+    }
 
     // Attempt to find updated time.
     const updatedTag = $(`[property="article:post_modified"],
@@ -700,43 +724,63 @@ ${searchString}`);
 [name="revised"],
 [name="last-modified"],
 [name="last-updated"]`);
-    timeModified = updatedTag.attr('content');
+    timeModified = updatedTag.first().attr('content');
 
-    // Search for a <time> tag.
-    if (!time) {
-      const timeTag = $('time');
-      time = timeTag.text();
+    if (!timeModified) {
+      const updatedTag = $('[class*=updated], [id*=updated]');
+      timeModified = updatedTag.first().text();
     }
 
-    if (!time) {
-      const timeTag = $('[datetime]');
-      time = timeTag.attr('datetime');
-    }
-
-    // Last ditch efforts.
-    if (!time) {
-      const tag = $(`[class*=datetime],
-[id*=datetime],
-[class*=date],
-[id*=date],
-[class*=published],
-[id*=published],
-[class*=meta],
-[id*=meta],
-[class*=updated],
-[id*=updated]`);
-      time = tag.first().text();
-    }
-
-    if (!time) {
-      const h2Tags = $('h2');
-      time = h2Tags.first().text();
-    }
 
     // If no published time, but only modified time, use the latter.
     if (!time && timeModified) {
       time = timeModified;
     }
+
+    // Note: brackets seem to throw off the parser.
+    time = time.replace(/\[|\]/g, '');
+
+    // Remove stuff that doesn't look like a date.
+    const stuffThatLookLikeDates = [
+      '\\d',
+      '-',
+      '\\s',
+      '\\+',
+      'th',
+      'T',
+      ':',
+      'am',
+      'pm'
+    ];
+    const months = [
+      'january',
+      'jan',
+      'february',
+      'feb',
+      'march',
+      'mar',
+      'april',
+      'apr',
+      'may',
+      'june',
+      'jun',
+      'july',
+      'jul',
+      'august',
+      'aug',
+      'september',
+      'sept',
+      'sep',
+      'october',
+      'oct',
+      'november',
+      'nov',
+      'december',
+      'dec'
+    ];
+    const acceptableStrings = stuffThatLookLikeDates.concat(months).join('|');
+    const regexp = new RegExp(acceptableStrings, 'gi');
+    time = time.match(regexp).join('').trim();
 
     // Convert to timestamp.
     let timestamp;
@@ -755,6 +799,10 @@ ${searchString}`);
     return timestamp || 0;
   }
 
+  stripNonAlphaNumeric(str = '') {
+    return str.replace(/[^a-zA-Z\d:]/gi, '');
+  }
+
   /**
    * Scraper: gets the Twittle handle of the article author.  Note: often this turns out to be the
    * platform's Twitter handle instead of the actual author (e.g. "@wallstreetjournal instead of
@@ -768,16 +816,21 @@ ${searchString}`);
     // Look for a Twitter creator card.
     const twitterCreatorTag = $('[name="twitter:creator"]');
     author = twitterCreatorTag.attr('content');
+    author = this.stripNonAlphaNumeric(author);
 
     // Next look for link tag.
     if (!author) {
-      const twitterLinkTags = $('a[href*="twitter.com"]');
+      const twitterLinkTags = $('a[href*="twitter.com/"]');
 
       twitterLinkTags.each((index, linkTag) => {
         // Author already found, return early.
         if (author) return;
 
         if (linkTag) {
+          const isComment = $(linkTag).closest('[class*="comment"], [id*="comment"]').length > 0;
+          
+          if (isComment) return;
+
           let href = linkTag.attribs.href;
           if (href) {
             // Fix for protocol-less urls (url util has problems with them).
@@ -809,6 +862,7 @@ ${searchString}`);
       });
     }
 
+    author = this.stripNonAlphaNumeric(author);
 
     // Next look for a Twitter site card.
     if (!author) {
@@ -822,7 +876,7 @@ ${searchString}`);
       author = '';
     } else {
       // Strip out unwanted characters.
-      author = author.replace(/\/|@/g, '');
+      author = this.stripNonAlphaNumeric(author);
 
       // Strip out junk url params
       author = author.split('?')[0];
@@ -853,7 +907,7 @@ ${searchString}`);
       title = titleTag.first().text().trim();
     }
 
-    return title || '';
+    return title.substr(0, 150) || '';
   }
 
   /**
@@ -894,13 +948,50 @@ ${searchString}`);
 
     if (!excerpt) return '';
 
-    // Strip out HTML, plus preserve when needed.
-    excerpt = excerpt.replace(/(?!(&lt;a)|(<a))(&lt;|<)(?:\s*)?/gi, '--lt--')
-    excerpt = excerpt.replace(/&gt;|>/gi, '--gt--');
-    const $$ = cheerio.load(`<div>${excerpt}</div>`);
-    excerpt = $$('div').text();
-    excerpt = excerpt.replace(/--lt--/gi, '&lt;');
-    excerpt = excerpt.replace(/--gt--/gi, '&gt;');
+    // Strip out certain HTML tags, plus preserve when needed.
+    const tagsToStrip = [
+      'a',
+      'strong',
+      'br',
+      'b',
+      'i'
+    ];
+
+    excerpt = excerpt.replace(/&lt;/gi, '<');
+    excerpt = excerpt.replace(/&gt;/gi, '>');
+
+    const $$ = cheerio.load(`<div id="stripFn">${excerpt}</div>`);
+    const txt = $$('#stripFn');
+
+    excerpt = txt.text();
+
+    const stripFnTags = $$('#stripFn').children().each((index, tag) => {
+      const shouldStripTag = tagsToStrip.indexOf(tag.name) !== -1;
+
+      const tagTxt = $$(tag).text();
+
+      if (!shouldStripTag) {
+        console.log(111, tagTxt, excerpt)
+        excerpt.replace(tagTxt, `&lt;${tag.name}&gt;${tagTxt}&lt;/${tag.name}&gt;`);
+      }
+    });
+
+
+    //excerpt = $$('#stripFn').text();
+
+    // const tagsToStripRegEx = tagsToStrip.join('|');
+
+    // excerpt = excerpt.replace(new RegExp(`(?!(&lt;${tagsToStripRegEx})|(<${tagsToStripRegEx}))(&lt;|<)(?:\s*)?`, 'gi'), '--lt--');
+    // excerpt = excerpt.replace(new RegExp(`^(${tagsToStripRegEx}(>|&gt;))`, 'gi'), '--gt--');
+
+    // console.log(111, excerpt)
+    // //excerpt = excerpt.replace(/(?!(&lt;a)|(<a))(&lt;|<)(?:\s*)?/gi, '--lt--');
+    
+    // excerpt = excerpt.replace(/&gt;|>/gi, '--gt--');
+    // const $$ = cheerio.load(`<div id="stripFn">${excerpt}</div>`);
+    // excerpt = $$('#stripFn').text();
+    // excerpt = excerpt.replace(/--lt--/gi, '&lt;');
+    // excerpt = excerpt.replace(/--gt--/gi, '&gt;');
 
     // Trim excerpt.
     const maxLength = 200;
