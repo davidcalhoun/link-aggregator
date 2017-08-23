@@ -71,6 +71,54 @@ describe('scraper', function() {
     });
   });
 
+  describe('mergeUrls', () => {
+    describe('category matching', () => {
+      const categories = {
+        "Video": ["video"],
+        "Foo": ["foo"],
+        "Bar": ["bar"]
+      };
+
+      it('prefers matches in url and title over excerpt', () => {
+        const scrapedUrlObj = {
+          url: 'https://github.com/foo/video',
+          title: 'Something foo something',
+          excerpt: 'Something bar something'
+        };
+
+        const socialUrlObj = {
+          tweetObj: {
+            user: {}
+          }
+        };
+
+        linkAggregator.setCategories(categories);
+        const result = linkAggregator.mergeUrls(scrapedUrlObj, socialUrlObj);
+
+        assert.deepEqual(result.categories, [ 'Video', 'Foo' ]);
+      });
+
+      it('falls back to excerpt', () => {
+        const scrapedUrlObj = {
+          url: 'https://github.com/sadas/vasfdfsdideo',
+          title: 'Something gdg something',
+          excerpt: 'Something bar something'
+        };
+
+        const socialUrlObj = {
+          tweetObj: {
+            user: {}
+          }
+        };
+
+        linkAggregator.setCategories(categories);
+        const result = linkAggregator.mergeUrls(scrapedUrlObj, socialUrlObj);
+
+        assert.deepEqual(result.categories, [ 'Bar' ]);
+      });
+    });
+  })
+
   describe('_getCategoriesFromText', function() {
     const categories = {
       "Video": ["video"]

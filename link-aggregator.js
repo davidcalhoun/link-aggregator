@@ -409,9 +409,6 @@ ${searchString}`);
         listName,
         text,
         created_at,
-        url,
-        title,
-        excerpt,
         id_str,
         user,
       } = urlMeta.tweetObj;
@@ -430,7 +427,6 @@ ${searchString}`);
 
       source = 'twitter';
       sourceDetails = `${listOwner}/${listName}`;
-      categories = this._getCategoriesFromText(`${text} ${mergedUrlObj.url} ${mergedUrlObj.title} ${mergedUrlObj.excerpt}`, this.categories);
       mergedUrlObj.tweetTexts = R.union(mergedUrlObj.tweetTexts, [`@${user.screen_name}: ${text}`]);
       timestamp = mergedUrlObj.articleTimestamp || tweetTimeMS;
       mergedUrlObj.tweetMentionCount++;
@@ -443,9 +439,6 @@ ${searchString}`);
       // Pocket url processing.
 
       const {
-        url,
-        title,
-        excerpt,
         username,
         tag,
         time_added,
@@ -456,7 +449,6 @@ ${searchString}`);
 
       source = 'pocket';
       sourceDetails = username;
-      categories = this._getCategoriesFromText(`${mergedUrlObj.title} ${mergedUrlObj.url} ${excerpt}`, this.categories);
       timestamp = mergedUrlObj.articleTimestamp || timeAddedMS;
       mergedUrlObj.pocketTag = R.union(mergedUrlObj.pocketTag, [ tag ]);
       mergedUrlObj.pocketTimeAdded = R.union(mergedUrlObj.pocketTimeAdded, [ timeAddedMS ]);
@@ -466,8 +458,16 @@ ${searchString}`);
     if (source) {
       mergedUrlObj.source = R.union(mergedUrlObj.source, [ source ]);
       mergedUrlObj.sourceDetails = R.union(mergedUrlObj.sourceDetails, [ sourceDetails ]);
-      mergedUrlObj.categories = R.union(mergedUrlObj.categories, categories);
       mergedUrlObj.timestamp = timestamp;
+    }
+
+    // Get categories from url and title.
+    const urlPlusTitle = `${mergedUrlObj.url} ${mergedUrlObj.title}`;
+    mergedUrlObj.categories = this._getCategoriesFromText(urlPlusTitle, this.categories);
+
+    // Fallback: get categories from excerpt.
+    if (mergedUrlObj.categories.length === 0) {
+      mergedUrlObj.categories = this._getCategoriesFromText(mergedUrlObj.excerpt, this.categories);
     }
 
     return mergedUrlObj;
@@ -1071,8 +1071,9 @@ ${searchString}`);
 
       // Filter out old urls.
       flattenedUrlObjects = this.filterStaleUrls(flattenedUrlObjects, 'articleTimestamp');
-      const staleURLObjects = R.differenceWith((x, y) => x.url === y.url, flattenedUrlObjectsUnfiltered, flattenedUrlObjects);
+      const staleURLObjects = R.differenceWith((x, y) => x && y && x.url === y.url, flattenedUrlObjectsUnfiltered, flattenedUrlObjects);
       const staleURLs = R.map((obj) => {
+        if (!obj) return;
         const timestamp = new Date(obj.articleTimestamp);
         const url = obj.url;
         return `${timestamp}: ${url}`
