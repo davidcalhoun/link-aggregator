@@ -140,7 +140,8 @@ class Aggregator {
         regexp = regexp.join('\\b|\\b');
       }
 
-      regexp = new RegExp(`\\b${regexp}\\b`, 'gi');
+      const dontMatchEntities = '[^&]';
+      regexp = new RegExp(`${dontMatchEntities}\\b${regexp}\\b`, 'gi');
 
       return [
         category,

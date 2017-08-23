@@ -121,8 +121,15 @@ describe('scraper', function() {
 
   describe('_getCategoriesFromText', function() {
     const categories = {
-      "Video": ["video"]
+      "Video": ["video"],
+      "Foo": ["amp"]
     };
+
+    it('ignores entity matches', () => {
+      linkAggregator.setCategories(categories);
+      const cats = linkAggregator._getCategoriesFromText('something &amp; something else video');
+      assert.deepEqual(cats, [ 'Video' ]);
+    });
 
     it('matches a word in a sentence', () => {
       linkAggregator.setCategories(categories);
