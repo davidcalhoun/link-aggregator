@@ -226,7 +226,7 @@ describe('scraper', function() {
   describe('getPageExcerpt', function() {
     let $;
 
-    it('preserves HTML entities', () => {
+    it('preserves whitelisted HTML entities', () => {
       const expectedResult = 'webpack, without the &lt;code&gt;pack&lt;/code&gt;';
       const body = `<meta property="og:description" content="${expectedResult}">`;
       $ = cheerio.load(body);
@@ -235,10 +235,28 @@ describe('scraper', function() {
       assert.deepEqual(result, expectedResult);
     });
 
+    it('preserves whitelisted HTML entities 2', () => {
+      const body = `<body><p>to provide clarity on how web loading primitives (like <a href="example.com"><strong>&lt;link rel=“preload”&gt;</strong>)</a></p></body>`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getPageExcerpt($);
+
+      assert.deepEqual(result, 'to provide clarity on how web loading primitives (like &lt;link rel=“preload”&gt;)');
+    });
+
     it('strips HTML <strong>', () => {
       const expectedResult = 'Combine the transparency of a PNG with the compression of a JPEG. Based on the idea from';
       const expectedResult2 = 'asdasd';
       const body = `<meta property="og:description" content="${expectedResult} &lt;strong&gt;${expectedResult2}&lt;/strong&gt;">`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getPageExcerpt($);
+
+      assert.deepEqual(result, `${expectedResult} ${expectedResult2}`);
+    });
+
+    it('strips HTML <strong> 2', () => {
+      const expectedResult = 'Combine the transparency of a PNG with the compression of a JPEG. Based on the idea from';
+      const expectedResult2 = 'asdasd';
+      const body = `<meta property="og:description" content="${expectedResult} <strong>${expectedResult2}</strong>">`;
       $ = cheerio.load(body);
       const result = linkAggregator.getPageExcerpt($);
 
@@ -255,20 +273,13 @@ describe('scraper', function() {
     });
 
     it('strips HTML links', () => {
-      const expectedResult = 'foo foo bar bar';
-      const body = `<meta property="og:description" content="${expectedResult}&lt;a href=&quot;https://www.reddit.co" />`;
+      const txt = 'foo foo bar bar ';
+      const expectedResult = `${txt}reddit`;
+      const body = `<meta property="og:description" content="${txt}&lt;a href=&quot;https://www.reddit.com&quot;&gt;reddit&lt;/a&gt;" />`;
       $ = cheerio.load(body);
       const result = linkAggregator.getPageExcerpt($);
 
       assert.deepEqual(result, expectedResult);
-    });
-
-    it('preserves instructional HTML', () => {
-      const body = `<body><p>to provide clarity on how web loading primitives (like <a href="example.com"><strong>&lt;link rel=“preload”&gt;</strong>)</a></p></body>`;
-      $ = cheerio.load(body);
-      const result = linkAggregator.getPageExcerpt($);
-
-      assert.deepEqual(result, 'to provide clarity on how web loading primitives (like &lt;link rel=“preload”&gt;)');
     });
   });
 

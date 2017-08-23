@@ -958,41 +958,24 @@ ${searchString}`);
       'i'
     ];
 
-    excerpt = excerpt.replace(/&lt;/gi, '<');
-    excerpt = excerpt.replace(/&gt;/gi, '>');
+    const tagsToStripRegEx = tagsToStrip.join('|');
 
+    const censoredOpeningTags = new RegExp(`(&lt;|<)(\\s)*((?:(${tagsToStripRegEx})))+(\\s|\\w|=|"|'|&quot;|\:|\\/|\\.)*(>|&gt;)?`, 'gi');
+    const censoredClosingTags = new RegExp(`(&lt;|<)(\\s)*\/(\\s)*((?:(${tagsToStripRegEx})))+(\\s|\\w|=|"|')*(>|&gt;)?`, 'gi');
+    excerpt = excerpt.replace(censoredOpeningTags, '');
+    excerpt = excerpt.replace(censoredClosingTags, '');
+
+    // Create placeholders for ok HTML tags.
+    excerpt = excerpt.replace(new RegExp(`(&lt;|<)(?:\s*)?`, 'gi'), '--lt--');
+    excerpt = excerpt.replace(new RegExp(`>|&gt;`, 'gi'), '--gt--');
+
+    excerpt = excerpt.replace(/&gt;|>/gi, '--gt--');
     const $$ = cheerio.load(`<div id="stripFn">${excerpt}</div>`);
-    const txt = $$('#stripFn');
+    excerpt = $$('#stripFn').text();
 
-    excerpt = txt.text();
-
-    const stripFnTags = $$('#stripFn').children().each((index, tag) => {
-      const shouldStripTag = tagsToStrip.indexOf(tag.name) !== -1;
-
-      const tagTxt = $$(tag).text();
-
-      if (!shouldStripTag) {
-        console.log(111, tagTxt, excerpt)
-        excerpt.replace(tagTxt, `&lt;${tag.name}&gt;${tagTxt}&lt;/${tag.name}&gt;`);
-      }
-    });
-
-
-    //excerpt = $$('#stripFn').text();
-
-    // const tagsToStripRegEx = tagsToStrip.join('|');
-
-    // excerpt = excerpt.replace(new RegExp(`(?!(&lt;${tagsToStripRegEx})|(<${tagsToStripRegEx}))(&lt;|<)(?:\s*)?`, 'gi'), '--lt--');
-    // excerpt = excerpt.replace(new RegExp(`^(${tagsToStripRegEx}(>|&gt;))`, 'gi'), '--gt--');
-
-    // console.log(111, excerpt)
-    // //excerpt = excerpt.replace(/(?!(&lt;a)|(<a))(&lt;|<)(?:\s*)?/gi, '--lt--');
-    
-    // excerpt = excerpt.replace(/&gt;|>/gi, '--gt--');
-    // const $$ = cheerio.load(`<div id="stripFn">${excerpt}</div>`);
-    // excerpt = $$('#stripFn').text();
-    // excerpt = excerpt.replace(/--lt--/gi, '&lt;');
-    // excerpt = excerpt.replace(/--gt--/gi, '&gt;');
+    // Replace placeholders for ok HTML tags.
+    excerpt = excerpt.replace(/--lt--/gi, '&lt;');
+    excerpt = excerpt.replace(/--gt--/gi, '&gt;');
 
     // Trim excerpt.
     const maxLength = 200;
