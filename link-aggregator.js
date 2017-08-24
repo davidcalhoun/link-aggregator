@@ -295,7 +295,7 @@ class Aggregator {
     let cats = [];
     const categoriesCopy = categories || this.categories || [];
 
-    cats = R.filter((category) => text.match(category.keywords.regexp))(categoriesCopy);
+    cats = R.filter((category) => text && text.match(category.keywords.regexp))(categoriesCopy);
 
     cats = R.pluck('name', cats);
 
