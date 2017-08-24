@@ -42,6 +42,20 @@ describe('scraper', function() {
   });
 
   describe('removeJunkURLParams', function() {
+    it('removes junk 1', () => {
+      const removeConfig = [
+        {
+          "domain": "codeburst.io",
+          "params": ["gi"]
+        }
+      ];
+      const cleanedUrl = 'https://codeburst.io/javascript-hoisting-in-action-a2cef1212d52';
+      const url = `${cleanedUrl}?gi=a003e3ac7e0b`;
+      const output = linkAggregator.removeJunkURLParams(url, removeConfig);
+
+      assert.equal(output, cleanedUrl);
+    });
+
     it('preserves hashes by default', () => {
       const removeConfig = [
         {
@@ -49,7 +63,8 @@ describe('scraper', function() {
           params: []
         }
       ];
-      const url = 'https://medium.com/fooo/writing-well-c361ce91f69f#---0-151.46y842iju';
+      const cleanedUrl = 'https://medium.com/fooo/writing-well-c361ce91f69f';
+      const url = `${cleanedUrl}#---0-151.46y842iju`;
       const output = linkAggregator.removeJunkURLParams(url, removeConfig);
 
       assert.equal(output, url);
@@ -63,11 +78,11 @@ describe('scraper', function() {
           removeHash: true
         }
       ];
-      const url = 'https://medium.com/fooo/writing-well-c361ce91f69f#---0-151.46y842iju';
-      const expectedOutput = 'https://medium.com/fooo/writing-well-c361ce91f69f';
+      const cleanedUrl = 'https://medium.com/fooo/writing-well-c361ce91f69f';
+      const url = `${cleanedUrl}#---0-151.46y842iju`;
       const output = linkAggregator.removeJunkURLParams(url, removeConfig);
 
-      assert.equal(output, expectedOutput);
+      assert.equal(output, cleanedUrl);
     });
   });
 

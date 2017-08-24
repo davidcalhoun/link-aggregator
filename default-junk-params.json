@@ -25,6 +25,7 @@
   "ex_cid",
   "extid",
   "gh_src",
+  "gi",
   "gif",
   "goal",
   "id_externo_rsoc",
@@ -52,6 +53,7 @@
   "postshare",
   "ref",
   "ref_",
+  "refcode",
   "referer",
   "referrer",
   "refresh",
@@ -182,11 +184,6 @@
   },
 
   {
-    "domain": "codeburst.io",
-    "params": ["gi"]
-  },
-
-  {
     "domain": "www.dailytelegraph.com.au",
     "params": ["nk"]
   },
@@ -264,7 +261,7 @@
 
   {
     "domain": ["medium.com"],
-    "params": ["gi", "sectionName"],
+    "params": ["sectionName"],
     "removeHash": true
   },
 
@@ -378,6 +375,6 @@
 
   {
     "domain": ["www.youtube.com", "youtu.be"],
-    "params": ["a", "app", "feature", "flow", "sort", "view", "index", "sns"]
+    "params": ["a", "app", "feature", "flow", "sort", "view", "index", "sns", "disable_polymer"]
   }
 ]
