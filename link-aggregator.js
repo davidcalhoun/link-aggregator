@@ -140,6 +140,9 @@ class Aggregator {
         regexp = regexp.join('\\b|\\b');
       }
 
+      // Match both "front end" and "front-end".
+      regexp = regexp.replace(' ', '(\\s|-)');
+
       const dontMatchEntities = '[^&]';
       regexp = new RegExp(`${dontMatchEntities}\\b${regexp}\\b`, 'gi');
 

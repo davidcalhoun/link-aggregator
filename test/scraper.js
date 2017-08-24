@@ -122,13 +122,14 @@ describe('scraper', function() {
   describe('_getCategoriesFromText', function() {
     const categories = {
       "Video": ["video"],
-      "Foo": ["amp"]
+      "Foo": ["amp"],
+      "Dash": ["dash dash"]
     };
 
-    it('ignores entity matches', () => {
+    it('matches with a dash', () => {
       linkAggregator.setCategories(categories);
-      const cats = linkAggregator._getCategoriesFromText('something &amp; something else video');
-      assert.deepEqual(cats, [ 'Video' ]);
+      const cats = linkAggregator._getCategoriesFromText('something dash-dash');
+      assert.deepEqual(cats, [ 'Dash' ]);
     });
 
     it('matches a word in a sentence', () => {
