@@ -820,20 +820,18 @@ ${searchString}`);
     // Look for a Twitter creator card.
     const twitterCreatorTag = $('[name="twitter:creator"]');
     author = twitterCreatorTag.attr('content');
-    author = this.stripNonAlphaNumeric(author);
 
     // Next look for link tag.
+    let linkTagMatches = [];
     if (!author) {
       const twitterLinkTags = $('a[href*="twitter.com/"]');
 
       twitterLinkTags.each((index, linkTag) => {
-        // Author already found, return early.
-        if (author) return;
-
         if (linkTag) {
-          const isComment = $(linkTag).closest('[class*="comment"], [id*="comment"]').length > 0;
-          
+          const isComment = $(linkTag).closest('[class*="Comment"], [id*="Comment"], [class*="comment"], [id*="comment"]').length > 0;
           if (isComment) return;
+
+          const isLikelyAuthor = $(linkTag).closest('[class*="Attribution"], [id*="Attribution"], [class*="attribution"], [id*="attribution"], footer').length > 0;
 
           let href = linkTag.attribs.href;
           if (href) {
@@ -859,14 +857,18 @@ ${searchString}`);
               via = via || R.path(['query', 'via'], parsedURL);
               screen_name = screen_name || R.path(['query', 'screen_name'], parsedURL);
             } else if (!isTweet) {
-              author = R.path(['pathname'], parsedURL);
+              if (isLikelyAuthor) {
+                linkTagMatches.unshift(R.path(['pathname'], parsedURL));
+              } else {
+                linkTagMatches.push(R.path(['pathname'], parsedURL));
+              }
             }
           }
         }
       });
-    }
 
-    author = this.stripNonAlphaNumeric(author);
+      author = linkTagMatches[0];
+    }
 
     // Next look for a Twitter site card.
     if (!author) {
@@ -879,12 +881,12 @@ ${searchString}`);
     if (!author) {
       author = '';
     } else {
-      // Strip out unwanted characters.
-      author = this.stripNonAlphaNumeric(author);
-
       // Strip out junk url params
       author = author.split('?')[0];
     }
+
+    // Strip out unwanted characters.
+    author = this.stripNonAlphaNumeric(author);
 
     return author;
   }

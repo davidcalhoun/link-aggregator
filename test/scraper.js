@@ -538,6 +538,45 @@ describe('scraper', function() {
     let $;
     const expectedResult = 'twitteruser';
 
+    it('prefers Twitter links in likely author areas 1', () => {
+      const body = `
+<a href="twitter.com/foo">foo</a>
+<footer>
+<a href="twitter.com/${expectedResult}">foo</a>
+</footer>
+`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getTwitterAuthor($);
+
+      assert.deepEqual(result, expectedResult);
+    });
+
+    it('prefers Twitter links in likely author areas 2', () => {
+      const body = `
+<a href="twitter.com/foo">foo</a>
+<div class="foo-attribution-foo">
+<a href="twitter.com/${expectedResult}">foo</a>
+</div>
+`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getTwitterAuthor($);
+
+      assert.deepEqual(result, expectedResult);
+    });
+
+    it('prefers Twitter links in likely author areas 3', () => {
+      const body = `
+<a href="twitter.com/foo">foo</a>
+<div class="foo-Attribution-foo">
+<a href="twitter.com/${expectedResult}">foo</a>
+</div>
+`;
+      $ = cheerio.load(body);
+      const result = linkAggregator.getTwitterAuthor($);
+
+      assert.deepEqual(result, expectedResult);
+    });
+
     it('ignores Twitter names in comments (class)', () => {
       const body = `
   <div class="single-comment-node root  comment-deep-0"" data-comment-id="2591" data-comment-author-id="1737">
