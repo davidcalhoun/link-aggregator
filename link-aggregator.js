@@ -683,6 +683,11 @@ ${searchString}`);
    * Scraper: gets time an article was published.
    */
   getPublishedTime($) {
+    const now = new Date();
+    const MS_IN_A_YEAR = 31536000000;
+    const lastYear = (new Date(now - MS_IN_A_YEAR)).getFullYear();
+    const currentYear = now.getFullYear();
+
     let time;
     let timeModified;
 
@@ -699,6 +704,8 @@ ${searchString}`);
     time = publishedTag.first().attr('content');
 
     // Fallbacks, with highest as the top priority.
+    let fallbackMatches = [];
+    let likelyMatches = [];
     if (!time) {
       const fallbackTimeTags = [
         'time',
@@ -710,16 +717,34 @@ ${searchString}`);
         '[class*=meta], [id*=meta]'
       ];
 
+      const processTagObj = (index, tagElt) => {
+        const curElt = $(tagElt)[0] || tagElt;
+        const hasChildren = curElt.children && curElt.children.length > 1;
+        if (hasChildren) {
+          $(tagElt)[0].children.forEach((child, index) => processTagObj(index, child));
+        } else {
+          let txt = $(tagElt).first().text();
+          const isLikelyYear = txt.match(new RegExp(`${currentYear}|${lastYear}`), 'gi');
+
+          if (txt) {
+            if (isLikelyYear) {
+              likelyMatches.push(txt);
+            } else {
+              fallbackMatches.push(txt);
+            }
+          }
+        }
+      };
+
       fallbackTimeTags.forEach((tag) => {
-        if (time) return;
-
         const tagElts = $(tag);
-        tagElts.each((index, tagElt) => {
-          if (time) return;
 
-          time = $(tagElt).text();
-        });
+        tagElts.each(processTagObj);
       });
+
+      time = likelyMatches[0] || fallbackMatches[0] || '';
+
+      console.log(222, time);
     }
 
     // Attempt to find updated time.
@@ -754,7 +779,9 @@ ${searchString}`);
       'T',
       ':',
       'am',
-      'pm'
+      'pm',
+      '\\.',
+      'Z'
     ];
     const months = [
       'january',
@@ -784,7 +811,8 @@ ${searchString}`);
     ];
     const acceptableStrings = stuffThatLookLikeDates.concat(months).join('|');
     const regexp = new RegExp(acceptableStrings, 'gi');
-    time = time.match(regexp).join('').trim();
+    time = time.match(regexp);
+    if (time) time = time.join('').trim();
 
     // Convert to timestamp.
     let timestamp;
