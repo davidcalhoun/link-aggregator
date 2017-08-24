@@ -700,7 +700,9 @@ ${searchString}`);
 [name="search_date"],
 [name="pubdate"],
 [property="datePublished"],
-[property="DC.date.issued"]`);
+[property="DC.date.issued"],
+[itemprop=startDate]
+`);
     time = publishedTag.first().attr('content');
 
     // Fallbacks, with highest as the top priority.
@@ -743,13 +745,12 @@ ${searchString}`);
       });
 
       time = likelyMatches[0] || fallbackMatches[0] || '';
-
-      console.log(222, time);
     }
 
     // Attempt to find updated time.
     const updatedTag = $(`[property="article:post_modified"],
 [itemprop=dateModified],
+[itemprop=endDate],
 [name="revised"],
 [name="last-modified"],
 [name="last-updated"]`);
@@ -823,6 +824,7 @@ ${searchString}`);
 
     const isInvalidDate = Number.isNaN(timestamp);
     if (isInvalidDate && time) {
+      console.log(111, time)
       // Try parsing human-readable time
       timestamp = parseMessyTime(time);
       timestamp = timestamp.getTime();

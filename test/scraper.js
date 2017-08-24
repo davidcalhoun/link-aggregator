@@ -308,6 +308,8 @@ describe('scraper', function() {
       const metas = [
         {itemprop: 'datePublished'},
         {itemprop: 'dateModified'},
+        {itemprop: 'startDate'},
+        {itemprop: 'endDate'},
         {property: 'article:published_time'},
         {name: 'revised'},
         {name: 'date'},
