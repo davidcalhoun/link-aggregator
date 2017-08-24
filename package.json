@@ -1,6 +1,6 @@
 {
   "name": "link-aggregator",
-  "version": "2.0.76",
+  "version": "2.0.77",
   "description": "",
   "main": "link-aggregator.js",
   "scripts": {
