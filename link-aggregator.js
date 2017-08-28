@@ -694,14 +694,14 @@ ${searchString}`);
     // Attempt to find published time.
     const publishedTag = $(`[property="article:published_time"],
 [property="article:post_date"],
-[itemprop=datePublished],
+[itemprop="datePublished"],
 [property="article:published_time"],
 [name="date"],
 [name="search_date"],
 [name="pubdate"],
 [property="datePublished"],
 [property="DC.date.issued"],
-[itemprop=startDate]
+[itemprop="startDate"]
 `);
     time = publishedTag.first().attr('content');
 
@@ -712,11 +712,11 @@ ${searchString}`);
       const fallbackTimeTags = [
         'time',
         '[datetime]',
-        'h2[class*=datetime], h2[id*=datetime], h2[class*=date], h2[id*=date]',
-        '[class*=datetime], [id*=datetime], [class*=date], [id*=date]',
-        '[class*=published], [id*=published]',
+        'h2[class*="datetime"], h2[id*="datetime"], h2[class*="date"], h2[id*="date"]',
+        '[class*="datetime"], [id*="datetime"], [class*="date"], [id*="date"]',
+        '[class*="published"], [id*="published"]',
         'h2',
-        '[class*=meta], [id*=meta]'
+        '[class*="meta"], [id*="meta"]'
       ];
 
       const processTagObj = (index, tagElt) => {
@@ -749,15 +749,15 @@ ${searchString}`);
 
     // Attempt to find updated time.
     const updatedTag = $(`[property="article:post_modified"],
-[itemprop=dateModified],
-[itemprop=endDate],
+[itemprop="dateModified"],
+[itemprop="endDate"],
 [name="revised"],
 [name="last-modified"],
 [name="last-updated"]`);
     timeModified = updatedTag.first().attr('content');
 
     if (!timeModified) {
-      const updatedTag = $('[class*=updated], [id*=updated]');
+      const updatedTag = $('[class*="updated"], [id*="updated"]');
       timeModified = updatedTag.first().text();
     }
 
