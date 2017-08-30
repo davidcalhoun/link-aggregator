@@ -824,7 +824,6 @@ ${searchString}`);
 
     const isInvalidDate = Number.isNaN(timestamp);
     if (isInvalidDate && time) {
-      console.log(111, time)
       // Try parsing human-readable time
       timestamp = parseMessyTime(time);
       timestamp = timestamp.getTime();
