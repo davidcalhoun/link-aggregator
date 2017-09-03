@@ -20,7 +20,6 @@ winston.level = 'debug';
 
 const msInAWeek = 604800000;
 const msInAMonth = 2592000000;
-const msInThreeMonths = msInAMonth * 3;
 
 const client = redis.createClient();
 
@@ -1041,7 +1040,7 @@ ${searchString}`);
    * Filters out old articles.
    */
 
-  filterStaleUrls(urlObjects, prop = 'timestamp', expiry = msInThreeMonths) {
+  filterStaleUrls(urlObjects, prop = 'timestamp', expiry = msInAMonth) {
     const fnName = `${moduleName}/filterStaleUrls`;
 
     const numUrlsBefore = urlObjects.length;
@@ -1621,7 +1620,7 @@ ${searchString}`);
 
     this._timerStart(fnName);
 
-    const maxAgeTimestampMS = Date.now() - msInThreeMonths;
+    const maxAgeTimestampMS = Date.now() - msInAMonth;
     const maxAgeTimestampS = maxAgeTimestampMS / 1000;
 
     const fetchPocket = fetchAction(apiUrl, {

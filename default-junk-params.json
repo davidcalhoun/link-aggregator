@@ -27,7 +27,10 @@
   "gh_src",
   "gi",
   "gif",
+  "gk2",
+  "gk3",
   "goal",
+  "hrid",
   "id_externo_rsoc",
   "idg_eid",
   "imm_mid",
@@ -48,11 +51,13 @@
   "ncid",
   "nk",
   "ocid",
+  "oid",
   "partnerid",
   "pcampaignid",
   "pk_campaign",
   "pk_kwd",
   "postshare",
+  "recruiter",
   "ref",
   "ref_",
   "refcode",
@@ -72,11 +77,13 @@
   "sc_outcome",
   "sc_publisher",
   "scid",
+  "sdfssdfsdfsfsdfsf",
   "sdid",
   "set",
   "sf97029123",
   "share",
   "shared",
+  "single_page",
   "slreturn",
   "source",
   "source_cd",
@@ -85,6 +92,7 @@
   "sr",
   "src",
   "srid",
+  "tdest_id",
   "tid",
   "trackId",
   "tse_id",
@@ -240,6 +248,11 @@
   {
     "domain": "itunes.apple.com",
     "params": ["mt"]
+  },
+
+  {
+    "domain": "linkedin.com",
+    "params": ["u"]
   },
 
   {
