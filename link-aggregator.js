@@ -1492,7 +1492,7 @@ ${searchString}`);
         // Pocket
         lists.pocket.forEach((pocketList) => {
           // Separate call for each Pocket tag.
-          winston.debug(`${fnName}`, pocketList);
+          winston.debug(`${fnName} Pocket ${pocketList.username}`);
           pocketList.tags.forEach((tag) => {
             let pocketArgs = Object.assign({}, pocketList, { tag });
             parallelFns.push((parallelCb) => this.fetchPocketList(pocketArgs, parallelCb));
@@ -1501,7 +1501,7 @@ ${searchString}`);
 
         // Twitter
         lists.twitter.forEach((twitterList) => {
-          winston.debug(`${fnName}`, twitterList);
+          winston.debug(`${fnName} Twitter`, twitterList);
           parallelFns.push((parallelCb) => this.fetchTwitterList(twitterList, parallelCb));
         });
 
@@ -1538,6 +1538,18 @@ ${searchString}`);
           // TODO: uniqWith instead?
           allUrls = R.unionWith(R.eqBy(R.prop('url')), allUrls, oldList);
           winston.debug(`${fnName}: ${allUrls.length} after dupe removal.`);
+
+          // Filter out old urls.
+          winston.debug(`${fnName}: ${allUrls.length} urls before removing stale urls.`);
+          allUrls = this.filterStaleUrls(allUrls, (obj) => {
+            if (obj.pocketTimeAdded.length > 0) {
+              // TODO: return newest time instead
+              return obj.pocketTimeAdded[0];
+            } else {
+              return obj.articleTimestamp;
+            }
+          });
+          winston.debug(`${fnName}: ${allUrls.length} urls after removing stale urls.`);
 
           // 1-10 ranking.
           allUrls = this.rankUrls(allUrls);
