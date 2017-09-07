@@ -1044,18 +1044,25 @@ ${searchString}`);
     const fnName = `${moduleName}/filterStaleUrls`;
 
     const numUrlsBefore = urlObjects.length;
-
-    const cutoffTimeMS = Date.now() - expiry;
     
     const isURLStale = (url) => {
       if(!url) {
         winston.error(`${fnName}: url object is null`);
         return true;
       }
-      const timestamp = (typeof prop === 'string') ? url[prop] : prop(url);
+      const timestamp = (typeof prop === 'function') ? prop(url) : url[prop];
       const timestampArr = (Array.isArray(timestamp)) ? timestamp : [ timestamp ];
 
-      const isFresh = R.any(timeMS => timeMS > cutoffTimeMS)(timestampArr)
+      let isFresh;
+      if (typeof expiry === 'function') {
+        // Special expiry function passed in, so use that.
+        isFresh = R.any(timeMS => expiry(url, timeMS))(timestampArr);
+      } else {
+        // Normal: find expiry by cutoff time.
+        const cutoffTimeMS = Date.now() - expiry;
+        isFresh = R.any(timeMS => timeMS > cutoffTimeMS)(timestampArr);
+      }
+
       return !isFresh;
     }
     const flattenedUrlObjects = R.reject(isURLStale, urlObjects);
@@ -1541,18 +1548,27 @@ ${searchString}`);
 
           // Filter out old urls.
           winston.debug(`${fnName}: ${allUrls.length} urls before removing stale urls.`);
-          allUrls = this.filterStaleUrls(allUrls, (obj) => {
+          const getTime = (obj) => {
             if (obj.pocketTimeAdded.length > 0) {
               // TODO: return newest time instead
               return obj.pocketTimeAdded[0];
             } else {
               return obj.articleTimestamp;
             }
-          });
+          };
+          allUrls = this.filterStaleUrls(allUrls, getTime);
           winston.debug(`${fnName}: ${allUrls.length} urls after removing stale urls.`);
 
           // 1-10 ranking.
           allUrls = this.rankUrls(allUrls);
+
+          // Remove old low-ranking articles.
+          const now = Date.now();
+          allUrls = this.filterStaleUrls(allUrls, getTime, (urlObj, timeMS) => {
+            const olderThanAWeek = now - timeMS > msInAWeek;
+            const isStale = urlObj.rank < 5 && olderThanAWeek;
+            return !isStale;
+          });
 
           this._timerEnd(fnName);
           client.set(`${redisNS}${redisIsFetchingKey}`, 0);
