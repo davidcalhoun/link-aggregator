@@ -1557,7 +1557,6 @@ ${searchString}`);
             }
           };
           allUrls = this.filterStaleUrls(allUrls, getTime);
-          winston.debug(`${fnName}: ${allUrls.length} urls after removing stale urls.`);
 
           // 1-10 ranking.
           allUrls = this.rankUrls(allUrls);
@@ -1566,9 +1565,10 @@ ${searchString}`);
           const now = Date.now();
           allUrls = this.filterStaleUrls(allUrls, getTime, (urlObj, timeMS) => {
             const olderThanAWeek = now - timeMS > msInAWeek;
-            const isStale = urlObj.rank < 5 && olderThanAWeek;
+            const isStale = urlObj.rank < 6 && olderThanAWeek;
             return !isStale;
           });
+          winston.debug(`${fnName}: ${allUrls.length} urls after removing stale urls.`);
 
           this._timerEnd(fnName);
           client.set(`${redisNS}${redisIsFetchingKey}`, 0);
