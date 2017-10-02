@@ -5,25 +5,32 @@
   "_branch_match_id",
   "_lrsc",
   "_mc",
+  "_pavilion",
   "1197",
   "abg",
   "abt",
   "aff",
+  "affiliate_id",
   "app",
   "BackURL",
   "bcsi-ac-ecec8fb75a0745f8",
   "camp",
   "campaign",
+  "cexp_id",
   "cid",
   "cm_mmc",
   "cm_mmca1",
   "cm_mmca2",
+  "cmp",
   "country",
+  "dclid",
   "dcmp",
   "ecid",
   "email_SHA1_lc",
   "ex_cid",
   "extid",
+  "gclid",
+  "gclsrc",
   "gh_src",
   "gi",
   "gif",
@@ -36,9 +43,11 @@
   "imm_mid",
   "intcmp",
   "ito",
+  "jsdojo_id",
   "kwp_0",
   "kwp_1",
   "kwp_4",
+  "lever-via",
   "link_id",
   "linkCode",
   "linkId",
@@ -57,6 +66,7 @@
   "pk_campaign",
   "pk_kwd",
   "postshare",
+  "pscid",
   "recruiter",
   "ref",
   "ref_",
@@ -98,7 +108,6 @@
   "tse_id",
   "ttl",
   "via",
-  "wt.mc_id",
   "xid",
   "xrs",
 
@@ -107,12 +116,6 @@
 
   { "__comment": "HubSpot" },
   "_hsenc", "_hsmi",
-
-  { "__comment": "The Guardian" },
-  "CMP",
-
-  { "__comment": "OReilly" },
-  "cmp",
 
   { "__comment": "Bloomberg, etc" },
   "cmpid", "cmpid=",
@@ -149,12 +152,12 @@
 
   { "__comment": "Google / Urchin" },
   "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "utm_cid", "utm_name",
-  "utm_sq",
+  "utm_sq", "utm_id", "utm_content_cj_12989168_7037258",
   "utm-source", "utm-medium", "utm-campaign", "utm-term", "utm-content", "utm-cid", "utm-name",
-  "utm-sq",
+  "utm-sq", "utm-id", "utm-content-cj-12989168-7037258",
 
   { "__comment": "Webtrends" },
-  "WT.mc_id",
+  "WT.mc_id", "WT.tsrc", "WT.nav"
 
   {
     "domain": "www.aclu.org",
@@ -231,7 +234,8 @@
 
   {
     "domain": ["gizmodo.com"],
-    "removeHash": true
+    "removeHash": true,
+    "params": ["rev"]
   },
 
   {
@@ -309,7 +313,7 @@
   {
     "domain": ["www.nytimes.com", "myaccount.nytimes.com", "mobile.nytimes.com"],
     "params": [
-      "_r", "action", "pgtype", "clickSource", "module", "region", "WT.nav", "emc", "nl",
+      "_r", "action", "pgtype", "clickSource", "module", "region", "emc", "nl",
       "nlid", "te"
     ]
   },
@@ -345,6 +349,11 @@
   },
 
   {
+    "domain": "producthunt.com",
+    "params": ["r"]
+  },
+
+  {
     "domain": ["www.reddit.com"],
     "params": ["st", "sh"]
   },
@@ -362,6 +371,16 @@
   {
     "domain": ["slides.com"],
     "removeHash": true
+  },
+
+  {
+    "domain": ["ted.com"],
+    "params": ["rss"]
+  },
+
+  {
+    "domain": ["theconversation.com"],
+    "params": ["from", "isappinstalled"]
   },
 
   {
@@ -391,6 +410,9 @@
 
   {
     "domain": ["www.youtube.com", "youtu.be"],
-    "params": ["a", "app", "feature", "flow", "sort", "view", "index", "sns", "disable_polymer"]
+    "params": [
+      "a", "app", "feature", "flow", "sort", "view", "index", "sns", "disable_polymer",
+      "time_continue"
+    ]
   }
 ]
