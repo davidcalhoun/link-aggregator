@@ -157,7 +157,7 @@
   "utm-sq", "utm-id", "utm-content-cj-12989168-7037258",
 
   { "__comment": "Webtrends" },
-  "WT.mc_id", "WT.tsrc", "WT.nav"
+  "WT.mc_id", "WT.tsrc", "WT.nav",
 
   {
     "domain": "www.aclu.org",
