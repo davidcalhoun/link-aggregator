@@ -1549,7 +1549,9 @@ ${searchString}`);
           // Filter out old urls.
           winston.debug(`${fnName}: ${allUrls.length} urls before removing stale urls.`);
           const getTime = (obj) => {
-            if (obj.pocketTimeAdded.length > 0) {
+            const pocketTimeAdded = R.path('pocketTimeAdded', 'length', obj) || 0;
+            
+            if (pocketTimeAdded > 0) {
               // TODO: return newest time instead
               return obj.pocketTimeAdded[0];
             } else {
