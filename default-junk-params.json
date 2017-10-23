@@ -70,6 +70,7 @@
   "recruiter",
   "ref",
   "ref_",
+  "ref_source",
   "refcode",
   "referer",
   "referrer",
@@ -271,7 +272,7 @@
 
   {
     "domain": "meetup.com",
-    "params": ["a", "rv", "_af", "_af_eid", "https"]
+    "params": ["a", "rv", "_af", "_af_eid", "https", "_cookie-check"]
   },
 
   {
