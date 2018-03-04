@@ -832,7 +832,7 @@ ${searchString}`);
   }
 
   stripNonAlphaNumeric(str = '') {
-    return str.replace(/[^a-zA-Z\d:]/gi, '');
+    return str.replace(/[^a-zA-Z\d:_]/gi, '');
   }
 
   /**
